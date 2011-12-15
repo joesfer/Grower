@@ -136,7 +136,7 @@ void Trimmer::Trim( std::vector< growerNode_t >& nodes, const int maxLength ) {
 		}
 
 		depth ++;
-		if ( depth > maxLength ) {
+		if ( depth > (size_t)maxLength ) {
 			// don't keep going deeper, the current active nodes have been marked as trimmed
 			// and will stop the meshing
 			break;

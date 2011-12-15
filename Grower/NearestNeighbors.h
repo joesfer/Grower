@@ -40,37 +40,28 @@
 #include <RenderLib.h>
 #pragma comment( lib, "RenderLib.lib" )
 
-
 class AttractionPoint {
 public:
-	AttractionPoint() : closestNode( UINT_MAX ), dist( FLT_MAX ) {}
-	inline RenderLib::Point3f	GetPos() const { return RenderLib::Point3f( (float)pos.x, (float)pos.y, (float)pos.z ); }
-	inline float				GetPos( int axis ) const { return GetPos()[axis]; }
-	inline short				GetSplitPlane() const { return (int)split; }
-	inline void					SetSplitPlane( int sp ) { split = (short)sp; }
-	inline bool					IsValid() const { return active; }
-
-public:
+	AttractionPoint() : active(true), closestNode( UINT_MAX ), dist( FLT_MAX ) {}
+	virtual ~AttractionPoint() {};
+	
+	bool		active;
 	MPoint		pos;
 	MVector		normal;
-	bool		active;
-	short		split;
-
 	size_t		closestNode;
 	float		dist;
 };
 
 class KdTree {
 public:
-	KdTree() : pm(NULL), samples(NULL) {}
-	~KdTree() { delete(pm); delete(samples); }
+	KdTree() : pm(NULL) {}
+	~KdTree() { delete(pm); }
 
 	bool Init( const MPointArray& points, const MVectorArray& normals );
-	size_t NearestNeighbors( const MPoint pos, const float searchRadius, const int maxNeighbors, AttractionPoint** result );
+	size_t NearestNeighbors( const MPoint pos, const float searchRadius, const int maxNeighbors, RenderLib::DataStructures::SampleIndex_t* result );
 
 public:
-	RenderLib::PhotonMap< AttractionPoint >* pm;
-	RenderLib::PhotonMapSamplesPool< AttractionPoint >* samples;
+	RenderLib::DataStructures::PhotonMap* pm;
 };
 
 #endif // NearestNeighbors_h__

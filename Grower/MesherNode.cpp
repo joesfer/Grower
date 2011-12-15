@@ -382,8 +382,8 @@ void Shape::CreateMesh( const GrowerData* data, const size_t activeNodes, const 
 		const int vertexOffsetA = vertexOffsets[ node.parent ] + tubeSections * childIdx;
 		const int vertexOffsetB = vertexOffsets[ i ];
 		for( int j = 0; j < tubeSections; j++ ) {
-			assert( vertexOffsetA + j < tubeSections * (unsigned int)remaining );
-			assert( vertexOffsetA + j + ( j + 1 ) % tubeSections < tubeSections * (unsigned int)remaining );
+			assert( vertexOffsetA + j < tubeSections * (int)remaining );
+			assert( vertexOffsetA + j + ( j + 1 ) % tubeSections < tubeSections * (int)remaining );
 
 			indices[ offset++ ] = vertexOffsetA + j;
 			indices[ offset++ ] = vertexOffsetB + j ;

@@ -29,7 +29,6 @@
 	SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
 	================================================================================
 */
-
 #include "SamplerNode.h"
 #include "GrowerNode.h"
 #include "TrimmerNode.h"

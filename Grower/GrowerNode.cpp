@@ -52,6 +52,7 @@
 #include <maya/MFnMatrixData.h>
 
 #include <stack>
+#include <set>
 
 //////////////////////////////////////////////////////////////////////
 //
@@ -294,70 +295,94 @@ MStatus Grower::initialize()
 
 }
 
+inline void insertUnique(std::vector<RenderLib::DataStructures::SampleIndex_t>& v, RenderLib::DataStructures::SampleIndex_t s) {
+	// we could use std::map instead of std::vector, but since the arrays are reused many times
+	// during running time, it's faster to do std::vector::resize(0) instead of std::set::clear() 
+	// to avoid memory reallocations.
+	std::vector<RenderLib::DataStructures::SampleIndex_t>::const_iterator it = v.begin();
+	for( ; it != v.end(); it++ ) {
+		if ( *it == s ) break;
+	}
+	if ( it == v.end() ) v.push_back(s);
+}
+
 //////////////////////////////////////////////////////////////////////////
 #if GROWER_DISPLAY_DEBUG_INFO
-void Grower::Grow( const MPointArray& points, const MVectorArray& normals, const MPoint& sourcePos, const float searchRadius, const float killRadius, const int maxNeighbors, const float nodeGrowDist, std::vector< growerNode_t >& nodes, std::vector< attractionPointVis_t >& attractors ) {
+void Grower::Grow( const MPointArray& points, const MVectorArray& normals, const MPoint& sourcePos, const float searchRadius, const float killRadius, const int maxNeighbors, const float nodeGrowDist, ::std::vector< growerNode_t >& nodes, ::std::vector< attractionPointVis_t >& attractors ) {
 #else
-void Grower::Grow( const MPointArray& points, const MVectorArray& normals, const MPoint& sourcePos, const float searchRadius, const float killRadius, const int maxNeighbors, const float nodeGrowDist, std::vector< growerNode_t >& nodes ) {
+void Grower::Grow( const MPointArray& points, const MVectorArray& normals, const MPoint& sourcePos, const float searchRadius, const float killRadius, const int maxNeighbors, const float nodeGrowDist, ::std::vector< growerNode_t >& nodes ) {
 #endif
+	using namespace std;
+
 	KdTree knn;
 	if ( !knn.Init( points, normals ) ) {
 		return;
 	}
 
-	std::vector< size_t > aliveNodes;
+	vector< RenderLib::DataStructures::SampleIndex_t > aliveNodes;
 
 	growerNode_t seed;
 	seed.pos = sourcePos;
+	RenderLib::DataStructures::SampleIndex_t* neighbors = (RenderLib::DataStructures::SampleIndex_t*)alloca( ( maxNeighbors + 1 ) * sizeof(RenderLib::DataStructures::SampleIndex_t) );
 
-	AttractionPoint** neighbors = (AttractionPoint**)alloca( ( maxNeighbors + 1 ) * sizeof(AttractionPoint*) );
+	vector<bool> activeAttractors;
+	activeAttractors.resize(points.length());
+	vector<RenderLib::DataStructures::SampleIndex_t> closestNode;
+	closestNode.resize(points.length());
+	vector<float> distance;
+	distance.resize(points.length());
+
+	for( size_t i = 0; i < points.length(); i++ ) { 
+		activeAttractors[i] = true; 
+		closestNode[i] = UINT_MAX;
+		distance[i] = FLT_MAX;
+	}
 
 	nodes.push_back( seed );
 	aliveNodes.push_back( 0 );
 
-	std::vector< AttractionPoint* > affectedPoints;
+	vector< RenderLib::DataStructures::SampleIndex_t > affectedPoints;
 
 	while( !aliveNodes.empty() ) {
-		vector< size_t > newNodes;
+		vector< RenderLib::DataStructures::SampleIndex_t > newNodes;
 		{
-			affectedPoints.resize( 0 );
+			affectedPoints.resize(0);
 
 			// find the closest attraction point to each alive node
-
 			for( size_t i = 0; i < aliveNodes.size(); i++ ) {
-				const size_t aliveNode = aliveNodes[ i ];
-
+				const RenderLib::DataStructures::SampleIndex_t aliveNode = aliveNodes[ i ];
 				size_t found = knn.NearestNeighbors( nodes[ aliveNode ].pos, searchRadius, maxNeighbors, neighbors );
-				assert( found <= maxNeighbors );
+				assert( (int)found <= maxNeighbors );
+#if _DEBUG
+				for( size_t j = 0; j < found; j++ ) {
+					const double d = points[neighbors[j]].distanceTo(nodes[aliveNode].pos);
+					assert(d <= searchRadius);
+				}
+#endif
 
 				for( size_t j = 0; j < found; j++ ) {
-					AttractionPoint* neighbor = neighbors[ j ];
+					RenderLib::DataStructures::SampleIndex_t neighbor = neighbors[ j ];
 
-					assert( neighbor->active );
+					// TODO: since we're checking whether the node is active outside of the knn.NearestNeighbors query
+					// some (or many) of the returned neighbors may be invalid, and therefore we're wasting space
+					// in the neighbors array. It would be more efficient to store the validity of a node within the
+					// kdtree, to skip invalid nodes during the nearestNeighbors query, but this would "pollute" the
+					// kdtree class with irrelevant filtering knowledge (we want to keep the class generic for further reuse).
+					if( !activeAttractors[neighbor] ) continue;
 
-					bool found = false;
-					for( size_t k = 0; k < affectedPoints.size(); k++ ) {
-						if ( affectedPoints[ k ] == neighbor ) {
-							found = true;
-							break;
-						}
-					}
-					if ( !found ) {
-						affectedPoints.push_back( neighbor );
-					}
+					insertUnique(affectedPoints, neighbor);
 
-
-					if ( neighbor->closestNode != UINT_MAX ) {
-						if( neighbor->closestNode != aliveNode ) {
-							float dist = (float)nodes[ aliveNode ].pos.distanceTo( neighbor->pos );
-							if ( dist < neighbors[ j ]->dist ) {
-								neighbor->closestNode = aliveNode;
-								neighbor->dist = dist;
+					if ( closestNode[neighbor] != UINT_MAX ) {
+						if( closestNode[neighbor] != aliveNode ) {
+							float dist = (float)nodes[ aliveNode ].pos.distanceTo( points[neighbor] );
+							if ( dist < distance[neighbor] ) {
+								closestNode[neighbor] = aliveNode;
+								distance[neighbor] = dist;
 							}
 						}
 					} else {
-						neighbor->closestNode = aliveNode;													
-						neighbor->dist		= (float)nodes[ aliveNode ].pos.distanceTo( neighbor->pos );
+						closestNode[neighbor] = aliveNode;													
+						distance[neighbor]	  = (float)nodes[ aliveNode ].pos.distanceTo( points[neighbor] );
 					}
 				}
 			}
@@ -367,35 +392,24 @@ void Grower::Grow( const MPointArray& points, const MVectorArray& normals, const
 			// only ones which remain active for the next iteration
 			aliveNodes.resize(0);
 			for( size_t i = 0; i < affectedPoints.size(); i++ ) {
-				bool found = false;
-				size_t node = affectedPoints[ i ]->closestNode;
-
-				for( size_t j = 0; j < aliveNodes.size(); j++ ) {
-					if( aliveNodes[ j ] == node ) {
-						found = true;
-						break;
-					}
-				}
-				if (!found) {
-					aliveNodes.push_back( node );
-				}
+				RenderLib::DataStructures::SampleIndex_t node = closestNode[affectedPoints[i]];								
+				insertUnique(aliveNodes, node);
 			}
 
 			// spawn new nodes	
-			for( int i = 0; i < aliveNodes.size(); i++ ) {
+			for( size_t i = 0; i < aliveNodes.size(); i++ ) {
 
-				const size_t nodeIdx = aliveNodes[ i ];
+				const RenderLib::DataStructures::SampleIndex_t& nodeIdx = aliveNodes[i];
 				growerNode_t& srcNode = nodes[ nodeIdx ];
 
 				MVector growDirection( 0, 0, 0 );
 				size_t nAttractors = 0;
 
 				for( size_t j = 0; j < affectedPoints.size(); j++ ) {
-
-					if ( affectedPoints[ j ]->closestNode != nodeIdx ) continue;
+					if ( closestNode[affectedPoints[j]] != nodeIdx ) continue;
 
 					nAttractors ++;
-					MVector dir = affectedPoints[ j ]->pos - srcNode.pos;
+					MVector dir = points[affectedPoints[j]] - srcNode.pos;
 					dir.normalize();
 					growDirection += dir;
 				}
@@ -418,10 +432,10 @@ void Grower::Grow( const MPointArray& points, const MVectorArray& normals, const
 					// erase active element, as it is stuck in a loop trying to produce the same children
 					aliveNodes[ i ] = aliveNodes[ aliveNodes.size() - 1 ];
 					aliveNodes.resize( aliveNodes.size() - 1 );
-					i--;
+					i--;				
 				} else {
 					newNode.parent = nodeIdx;
-					size_t newNodeIdx = nodes.size();
+					RenderLib::DataStructures::SampleIndex_t newNodeIdx = (RenderLib::DataStructures::SampleIndex_t)nodes.size();
 					srcNode.children.push_back( newNodeIdx );
 					nodes.push_back( newNode );
 					newNodes.push_back( newNodeIdx );
@@ -435,17 +449,16 @@ void Grower::Grow( const MPointArray& points, const MVectorArray& normals, const
 		// use the new spawned nodes to kill close attractor points
 		for( size_t i = 0; i < newNodes.size(); i++ ) {
 			size_t found = knn.NearestNeighbors( nodes[ newNodes[ i ] ].pos, killRadius, maxNeighbors, neighbors );
-			assert( found <= maxNeighbors );
+			assert( (int)found <= maxNeighbors );
 			for( size_t j = 0; j < found; j++ ) {
-				neighbors[ j ]->active = false;
+				activeAttractors[neighbors[ j ]] = false;
 			}
 		}
 	}
 
 	// reactivate all the samples, we're going to retrieve the normals from them
-	AttractionPoint* attractors = knn.pm->GetSamples();
-	for( unsigned int i = 0; i < knn.pm->NumSamples(); i++ ) {
-		attractors[ i ].active = true;
+	for( unsigned int i = 0; i < points.length(); i++ ) {
+		activeAttractors[ i ] = true;
 	}
 
 	const MVector zero(0,0,0);
@@ -456,7 +469,7 @@ void Grower::Grow( const MPointArray& points, const MVectorArray& normals, const
 		// set normals
 		size_t found = knn.NearestNeighbors( node.pos, killRadius, 1, neighbors );
 		if ( found == 1 ) {
-			node.surfaceNormal = neighbors[0]->normal;
+			node.surfaceNormal = normals[neighbors[0]];
 		} else if ( node.parent != INVALID_PARENT && !nodes[ node.parent ].surfaceNormal.isEquivalent( zero, 0.001f ) ) {
 			node.surfaceNormal = nodes[ node.parent ].surfaceNormal;
 		/*} else if ( node.children.size() > 0 ) {
