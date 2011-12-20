@@ -37,8 +37,42 @@ License:
 
 Compilation:
 
-	- The project depends on the RenderLib shared library to build. This has been 
-	referenced as a submodule on the repository.
-	- Checkout and build RenderLib using CMake.
-	- Build the Grower plugin using CMake, specifying the path to RenderLib via the
-	RENDERLIB_INCLUDE_DIR and RENDERLIB_LIBRARY_DIR variables via the command line.
+	- Clone the git repository into a local folder:
+
+		mkdir <grower_folder>
+		cd <grower_folder>
+		git clone git://github.com/joesfer/Grower.git 
+
+	- The project depends on the RenderLib shared library, included as a submodule.
+	Git should have cloned the module code as well under <grower_folder>/src/RenderLib
+		
+	- Build RenderLib using CMake:
+
+		cd <grower_folder>/src/RenderLib
+		mkdir .build
+		cd .build
+		cmake ..
+
+		Under windows: cmake will generate a Visual studio solution on .build
+		Under linux: cmake will generate a GCC makefile
+
+		Build the library. If everything went well, a new folder structure 
+		<grower_folder>/src/RenderLib/lib containing the static library 
+		should have been generated.
+		
+	- Build the Grower plugin using CMake:
+
+		cd <grower_folder>
+		mkdir .build
+		cd .build
+		cmake ..
+		
+		Under windows: cmake will generate a Visual studio solution on .build
+		Under linux: cmake will generate a GCC makefile
+
+		Build the plugin using visual studio or make.
+
+		This will find the precompiled renderLib and build the .mll plugin
+		under <grower_folder>/bin
+
+	- Load the .mll file in Maya's plugin manager.

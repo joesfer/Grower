@@ -44,8 +44,8 @@ FIND_PACKAGE(OpenGL)
 SET( MAYA_HEADERS_DIR ${MAYA_ROOT}/include )
 SET( MAYA_LIBRARY_DIR ${MAYA_ROOT}/lib )
 
-set( RENDERLIB_INCLUDE_DIR "" CACHE STRING "path to renderlib include folder" )
-set( RENDERLIB_LIBRARY_DIR "" CACHE STRING "path to renderlib libray folder" )
+set( RENDERLIB_INCLUDE_DIR  ${CMAKE_CURRENT_SOURCE_DIR}/src/RenderLib/include CACHE STRING "path to renderlib include folder" )
+set( RENDERLIB_LIBRARY_DIR  ${CMAKE_CURRENT_SOURCE_DIR}/src/RenderLib/lib/${CMAKE_BUILD_TYPE} CACHE STRING "path to renderlib libray folder" )
 
 SET ( LOCAL_WARNING_FLAGS /W3 )
 SET ( LOCAL_RTTI_FLAGS /GR )
