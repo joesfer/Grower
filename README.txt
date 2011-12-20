@@ -44,7 +44,11 @@ Compilation:
 		git clone git://github.com/joesfer/Grower.git 
 
 	- The project depends on the RenderLib shared library, included as a submodule.
-	Git should have cloned the module code as well under <grower_folder>/src/RenderLib
+		in <grower_folder>
+		git submodules init
+		git submodules update
+		
+		git should say Cloning into 'src/RenderLib'...
 		
 	- Build RenderLib using CMake:
 
