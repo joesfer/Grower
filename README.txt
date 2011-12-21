@@ -7,7 +7,7 @@ Description:
 
 License:
 
-	Copyright (c) 2010, Jose Esteve. http://www.joesfer.com
+	Copyright (c) 2011, Jose Esteve. http://www.joesfer.com
 	All rights reserved. 
 
 	Redistribution and use in source and binary forms, with or without modification, 
