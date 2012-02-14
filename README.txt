@@ -70,3 +70,8 @@ Compilation:
 		under <grower_folder>/bin
 
 	- Load the .mll file in Maya's plugin manager.
+	- Load the provided MEL script.
+
+Usage:
+	- Select a mesh object followed by one or more space locators
+	- Invoke the growVeins() procedure from a MEL script window. 

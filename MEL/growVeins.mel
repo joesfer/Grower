@@ -1,0 +1,77 @@
+proc createGrower(string $sampler, string $meshTransform, string $locatorTransform) 
+{
+    // Create grower
+    $grower = `createNode "Grower"`;
+    connectAttr ($sampler + ".outSamples") ($grower + ".samples");
+    connectAttr ($sampler + ".worldToLocal") ($grower + ".worldToLocal");
+    connectAttr ($locatorTransform + ".translate") ($grower + ".inputPos");
+    // Create trimmer
+    $trimmer = `createNode "Trimmer"`;
+    connectAttr ($grower + ".output") ($trimmer + ".input");
+    // Create shape
+    $growerShape = `createNode "GrowerShape" -parent $meshTransform`;
+    connectAttr ($trimmer + ".output") ($growerShape + ".input");
+    
+    // retrieve mesh bounds to work out the default thickness
+    $bounds = `xform -q -boundingBox $meshTransform`;
+    $width = $bounds[1] - $bounds[0];
+    
+    setAttr ($growerShape + ".thickness") ($width * 0.002);
+    // Create output mesh
+    $mesh = `createNode mesh -parent $meshTransform`;
+    connectAttr ($growerShape + ".outMesh ") ($mesh + ".inMesh" );
+    sets -e -forceElement initialShadingGroup $mesh;
+}
+
+proc string getSelectedShape()
+{
+   $selection = `ls -selection`;
+   if ( size($selection) < 1 ) return ""; 
+   $m = $selection[0];  
+   $shapes = `listRelatives -shapes $m`;
+   if ( size($shapes) < 1 ) return "";     
+   return $shapes[0];
+}
+proc string[] getSelectedLocators()
+{
+   $selection = `ls -selection`;
+   string $transforms[];
+   for( $i = 1; $i < size($selection); $i++ )
+   {
+       $transforms[$i-1] = $selection[$i];
+   }
+   return $transforms;
+}
+global proc growVeins()
+{
+    $meshShape = getSelectedShape();
+    if ($meshShape == "") 
+    {
+        error "select a mesh and then one or more locators";
+        return;
+    }
+    $parents = `listRelatives -parent $meshShape`;  
+    if ( size($parents) < 1 )
+    {
+        error "unable to retrieve mesh transform";
+        return;
+    }
+    $meshTransform = $parents[0];
+    
+    $locators = getSelectedLocators();
+    if(size($locators) == 0) 
+    {
+        error "select a mesh and then one or more locators";
+        return;
+    }
+
+    // Create sampler node
+    $sampler = `createNode "Sampler"`;
+    connectAttr ($meshShape + ".outMesh") ($sampler + ".inputMesh");
+
+    // Create grower from each locator
+    for($i = 0; $i < size($locators); $i++)
+    {        
+        createGrower($sampler, $meshTransform, $locators[$i]); 
+    }
+}
