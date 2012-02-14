@@ -20,6 +20,8 @@
 #include <maya/MDagPath.h>
 #include <maya/MFnSingleIndexedComponent.h>
 
+#include <iostream>
+
 #define RANDOM_FLOAT (float)rand() / RAND_MAX
 
 // Object and component color defines
@@ -80,7 +82,7 @@ void MesherUI::getDrawRequests( const MDrawInfo & info,
   Shape* meshNode =  (Shape*)surfaceShape();
   GrowerData * geom = meshNode->MeshGeometry();
   if ( NULL == geom ) {
-	  cerr << "NO DrawRequest for Grower\n";
+	  std::cerr << "NO DrawRequest for Grower" << std::endl;
 	  return;
   }
 

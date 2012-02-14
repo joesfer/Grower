@@ -14,7 +14,7 @@ proc createGrower(string $sampler, string $meshTransform, string $locatorTransfo
     
     // retrieve mesh bounds to work out the default thickness
     $bounds = `xform -q -boundingBox $meshTransform`;
-    $width = $bounds[1] - $bounds[0];
+    $width = $bounds[3] - $bounds[0];
     
     setAttr ($growerShape + ".thickness") ($width * 0.002);
     // Create output mesh

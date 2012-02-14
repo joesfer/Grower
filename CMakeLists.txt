@@ -18,6 +18,8 @@ if(WIN32)
         add_definitions(-D_SCL_SECURE_NO_WARNINGS)
         add_definitions(-D_CRT_SECURE_NO_DEPRECATE)
 		add_definitions(-D NOMINMAX) # prevent windef.h min/max macros from interfering with stl's
+		add_definitions(-D REQUIRE_IOSTREAM)
+		add_definitions(-D _BOOL)
 		set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHsc")
 
     endif(MSVC)
@@ -42,8 +44,11 @@ find_package(OpenGL)
 set( MAYA_HEADERS_DIR ${MAYA_ROOT}/include )
 set( MAYA_LIBRARY_DIR ${MAYA_ROOT}/lib )
 
-set( RENDERLIB_INCLUDE_DIR  ${CMAKE_CURRENT_SOURCE_DIR}/src/RenderLib/include CACHE STRING "path to renderlib include folder" )
-set( RENDERLIB_LIBRARY_DIR  ${CMAKE_CURRENT_SOURCE_DIR}/src/RenderLib/lib/${CMAKE_BUILD_TYPE} CACHE STRING "path to renderlib libray folder" )
+set( CORELIB_INCLUDE_DIR  ${CMAKE_CURRENT_SOURCE_DIR}/CoreLib/include CACHE STRING "path to coreLib include folder" )
+set( CORELIB_LIBRARY_DIR  ${CMAKE_CURRENT_SOURCE_DIR}/CoreLib/lib/${CMAKE_BUILD_TYPE} CACHE STRING "path to coreLib libray folder" )
+
+set( RENDERLIB_INCLUDE_DIR  ${CMAKE_CURRENT_SOURCE_DIR}/RenderLib/include CACHE STRING "path to renderlib include folder" )
+set( RENDERLIB_LIBRARY_DIR  ${CMAKE_CURRENT_SOURCE_DIR}/RenderLib/lib/${CMAKE_BUILD_TYPE} CACHE STRING "path to renderlib libray folder" )
 
 set ( LOCAL_WARNING_FLAGS /W3 )
 set ( LOCAL_RTTI_FLAGS /GR )
@@ -53,10 +58,11 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/../bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/../bin)
 
 # add base to include directories
-include_directories ( ${PUBLIC_INCLUDE_DIRS} ${MAYA_HEADERS_DIR} ${RENDERLIB_INCLUDE_DIR} ${OPENGL_INCLUDE_DIR})
-link_directories ( ${PUBLIC_LIBRARY_DIRS} ${MAYA_LIBRARY_DIR} ${RENDERLIB_LIBRARY_DIR})
+include_directories ( ${PUBLIC_INCLUDE_DIRS} ${MAYA_HEADERS_DIR} ${RENDERLIB_INCLUDE_DIR} ${CORELIB_INCLUDE_DIR} ${OPENGL_INCLUDE_DIR})
+link_directories ( ${PUBLIC_LIBRARY_DIRS} ${MAYA_LIBRARY_DIR} ${RENDERLIB_LIBRARY_DIR} ${CORELIB_LIBRARY_DIR})
 
 set( RENDER_LIB RenderLib.lib )
+set( CORE_LIB CoreLib.lib )
 set( OPENGL_LIB opengl32.lib )
 set ( MAYA_DEFINITIONS "_AFXDLL,_MBCS,NT_PLUGIN,REQUIRE_IOSTREAM" )
 set( MAYASDK_LIBRARIES "Foundation.lib" "OpenMaya.lib" "OpenMayaUI.lib" "OpenMayaAnim.lib" "OpenMayaFX.lib" "OpenMayaRender.lib" )
@@ -65,7 +71,7 @@ set( MAYASDK_LIBRARIES "Foundation.lib" "OpenMaya.lib" "OpenMayaUI.lib" "OpenMay
 file(GLOB_RECURSE SOURCE_FILES src/*.c src/*.cpp src/*.h src/*.inl src/*.hpp src/*.glsl src/*.ui)
 
 add_library( ${MAYA_PLUGIN_NAME} SHARED ${SOURCE_FILES} )
-target_link_libraries( ${MAYA_PLUGIN_NAME} ${MAYASDK_LIBRARIES} ${OPENGL_LIB} ${RENDER_LIB})
+target_link_libraries( ${MAYA_PLUGIN_NAME} ${MAYASDK_LIBRARIES} ${OPENGL_LIB} ${RENDER_LIB} ${CORE_LIB})
 
 set_target_properties( ${MAYA_PLUGIN_NAME} PROPERTIES COMPILE_DEFINITIONS ${MAYA_DEFINITIONS} )
 set_target_properties( ${MAYA_PLUGIN_NAME} PROPERTIES OUTPUT_NAME ${MAYA_PLUGIN_NAME} )

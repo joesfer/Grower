@@ -11,7 +11,6 @@
 #include "MesherNode.h"
 #include "MesherUI.h"
 #include "GrowerData.h"
-#include "Command.h"
 
 #include <maya/MFnPlugin.h>
 
@@ -60,12 +59,6 @@ MStatus initializePlugin( MObject obj )
 		return status;
 	}
 
-	status = plugin.registerCommand( "grow", GrowerCmd::creator, GrowerCmd::syntax );
-	if (!status) {
-		status.perror("registerCommand");
-		return status;
-	}
-
 	return status;
 }
 
@@ -111,13 +104,6 @@ MStatus uninitializePlugin( MObject obj)
 		status.perror("deregisterNode");
 		return status;
 	}
-
-	status = plugin.deregisterCommand( "grow" );
-	if (!status) {
-		status.perror("deregisterCommand");
-		return status;
-	}
-
 
 	return status;
 }

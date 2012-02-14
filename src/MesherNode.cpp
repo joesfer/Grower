@@ -22,6 +22,7 @@
 #include <maya/MFnPluginData.h>
 #include <maya/MGlobal.h>
 #include <maya/MFnMeshData.h>
+#include <iostream>
 
 #include <stack>
 
@@ -36,13 +37,13 @@
 
 #define MCHECKERROR(STAT,MSG)       \
 	if ( MS::kSuccess != STAT ) {   \
-	cerr << MSG << endl;        \
+	std::cerr << MSG << std::endl;        \
 	return MS::kFailure;    \
 	}
 
 #define MCHECKERRORNORET(STAT,MSG)  \
 	if ( MS::kSuccess != STAT ) {   \
-	cerr << MSG << endl;        \
+	std::cerr << MSG << std::endl;        \
 	}
 
 // You MUST change this to a unique value!!!  The typeId is a 32bit value used
@@ -205,7 +206,7 @@ MStatus Shape::compute( const MPlug& plug, MDataBlock& data )
 
 		GrowerData* aoMeshData = static_cast< GrowerData* >( aoMeshHandle.asPluginData() );
 		if ( aoMeshData == NULL ) {
-			cerr << "output mesh data not calculated" << endl;
+			std::cerr << "output mesh data not calculated" << std::endl;
 			return MS::kFailure;
 		}
 

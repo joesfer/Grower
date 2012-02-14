@@ -1,3 +1,7 @@
-[submodule "src/RenderLib"]
-	path = src/RenderLib
+[submodule "RenderLib"]
+	path = RenderLib
 	url = git://github.com/joesfer/RenderLib.git
+
+[submodule "CoreLib"]
+	path = CoreLib
+	url = git://github.com/joesfer/CoreLib.git

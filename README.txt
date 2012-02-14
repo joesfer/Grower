@@ -33,16 +33,18 @@ Compilation:
 		cd <grower_folder>
 		git clone git://github.com/joesfer/Grower.git 
 
-	- The project depends on the RenderLib shared library, included as a submodule.
+	- The project depends on the CoreLib and RenderLib shared libraries, included as submodules.
 		in <grower_folder>
 		git submodules init
 		git submodules update
 		
-		git should say Cloning into 'src/RenderLib'...
-		
-	- Build RenderLib using CMake:
+		git should say 
+		Cloning into 'CoreLib'...
+		Cloning into 'RenderLib'...
+	
+	- Build CoreLib using CMake:
 
-		cd <grower_folder>/src/RenderLib
+		cd <grower_folder>/CoreLib
 		mkdir .build
 		cd .build
 		cmake ..
@@ -51,7 +53,21 @@ Compilation:
 		Under linux: cmake will generate a GCC makefile
 
 		Build the library. If everything went well, a new folder structure 
-		<grower_folder>/src/RenderLib/lib containing the static library 
+		<grower_folder>/CoreLib/lib containing the static library 
+		should have been generated.
+		
+	- Build RenderLib using CMake:
+
+		cd <grower_folder>/RenderLib
+		mkdir .build
+		cd .build
+		cmake ..
+
+		Under windows: cmake will generate a Visual studio solution on .build
+		Under linux: cmake will generate a GCC makefile
+
+		Build the library. If everything went well, a new folder structure 
+		<grower_folder>/RenderLib/lib containing the static library 
 		should have been generated.
 		
 	- Build the Grower plugin using CMake:
