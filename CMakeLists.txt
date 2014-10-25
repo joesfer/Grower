@@ -26,7 +26,7 @@ if(WIN32)
 endif (WIN32)
 
 # Set the Maya version and architecture (default values)
-set(MAYA_VERSION 2011 CACHE STRING "Maya Version")
+set(MAYA_VERSION 2015 CACHE STRING "Maya Version")
 set(MAYA_ARCH x64 CACHE STRING "HW Architecture")
 
 if(WIN32)

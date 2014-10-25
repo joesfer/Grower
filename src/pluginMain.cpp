@@ -26,7 +26,7 @@ MStatus initializePlugin( MObject obj )
 //
 { 
 	MStatus   status;
-	MFnPlugin plugin( obj, "Jose Esteve. www.joesfer.com", "2011", "Any");
+	MFnPlugin plugin( obj, "Jose Esteve. www.joesfer.com", "2014", "Any");
 
 	status = plugin.registerNode( "Sampler", Sampler::id, Sampler::creator, Sampler::initialize );
 	if (!status) {
