@@ -266,7 +266,7 @@ void Shape::CreateMesh( const GrowerData* data, const size_t activeNodes, const 
 				assert( trimmedNodes[ parent ] != TS_UNVISITED );
 			}			
 		}
-		trimmedNodes[ i ] = trimmed ? TS_TRIMMED : TS_ACTIVE;
+		trimmedNodes[ i ] = trimmed ? (short)TS_TRIMMED : (short)TS_ACTIVE;
 		if ( !trimmed ) {
 			remaining += __max( 1, data->nodes[ i ].children.size() );
 		}
@@ -362,9 +362,9 @@ void Shape::CreateMesh( const GrowerData* data, const size_t activeNodes, const 
 			assert( vertexOffsetA + j + ( j + 1 ) % tubeSections < tubeSections * (int)remaining );
 
 			indices[ offset++ ] = vertexOffsetA + j;
-			indices[ offset++ ] = vertexOffsetB + j ;
-			indices[ offset++ ] = vertexOffsetB + ( j + 1 ) % tubeSections;
 			indices[ offset++ ] = vertexOffsetA + ( j + 1 ) % tubeSections;
+			indices[offset++] = vertexOffsetB + (j + 1) % tubeSections;
+			indices[offset++] = vertexOffsetB + j;
 		}
 	}
 	assert( offset == 2 * numTris );

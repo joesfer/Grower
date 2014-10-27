@@ -283,7 +283,7 @@ inline void insertUnique(std::vector<RenderLib::DataStructures::SampleIndex_t>& 
 
 //////////////////////////////////////////////////////////////////////////
 #if GROWER_DISPLAY_DEBUG_INFO
-void Grower::Grow( const MPointArray& points, const MVectorArray& normals, const MPoint& sourcePos, const float searchRadius, const float killRadius, const int maxNeighbors, const float nodeGrowDist, ::std::vector< growerNode_t >& nodes, ::std::vector< attractionPointVis_t >& attractors ) {
+void Grower::Grow( const MPointArray& points, const MVectorArray& normals, const MPoint& sourcePos, const float searchRadius, const float killRadius, const int maxNeighbors, const float nodeGrowDist, ::std::vector< growerNode_t >& nodes, ::std::vector< attractionPointVis_t >& /*attractors*/ ) {
 #else
 void Grower::Grow( const MPointArray& points, const MVectorArray& normals, const MPoint& sourcePos, const float searchRadius, const float killRadius, const int maxNeighbors, const float nodeGrowDist, ::std::vector< growerNode_t >& nodes ) {
 #endif
@@ -487,14 +487,14 @@ void Grower::Grow( const MPointArray& points, const MVectorArray& normals, const
 		}
 	}
 
-#if GROWER_DISPLAY_DEBUG_INFO
-	const AttractionPoint* samples = knn.pm->GetSamples();
-	unsigned int nSamples = knn.pm->NumSamples();
-	for( unsigned int i = 0; i < nSamples; i++ ) {
-		attractionPointVis_t p;
-		p.pos = samples[ i ].pos;
-		p.active = samples[ i ].active;
-		attractors.push_back( p );
-	}
-#endif
+//#if GROWER_DISPLAY_DEBUG_INFO
+//	const AttractionPoint* samples = knn.pm->GetSamples();
+//	unsigned int nSamples = knn.pm->NumSamples();
+//	for( unsigned int i = 0; i < nSamples; i++ ) {
+//		attractionPointVis_t p;
+//		p.pos = samples[ i ].pos;
+//		p.active = samples[ i ].active;
+//		attractors.push_back( p );
+//	}
+//#endif
 }

@@ -74,7 +74,7 @@ void* MesherUI::creator() {
 //
 //////////////////////////////////////////////////////////////////////////
 void MesherUI::getDrawRequests( const MDrawInfo & info,
-								bool objectAndActiveOnly,
+								bool /*objectAndActiveOnly*/,
 								MDrawRequestQueue & queue ) {
   // Get the data necessary to draw the shape
   //
@@ -234,8 +234,8 @@ void MesherUI::draw( const MDrawRequest & request, M3dView & view ) const{
 //     worldSpaceSelectPts  -
 //
 //////////////////////////////////////////////////////////////////////////
-bool MesherUI::select( MSelectInfo &selectInfo, MSelectionList &selectionList,
-						MPointArray &worldSpaceSelectPts ) const {
+bool MesherUI::select( MSelectInfo &/*selectInfo*/, MSelectionList &/*selectionList*/,
+						MPointArray &/*worldSpaceSelectPts*/ ) const {
 return false;
 						// bool selected = false;
 						// bool componentSelected = false;
@@ -413,9 +413,9 @@ void MesherUI::DrawWireframe( const MDrawRequest & request, M3dView & view ) con
 //     worldSpaceSelectPts  -
 //
 //////////////////////////////////////////////////////////////////////////
-bool MesherUI::SelectVertices( MSelectInfo &selectInfo,
-							 MSelectionList &selectionList,
-							 MPointArray &worldSpaceSelectPts ) const {
+bool MesherUI::SelectVertices( MSelectInfo &/*selectInfo*/,
+							 MSelectionList &/*selectionList*/,
+							 MPointArray &/*worldSpaceSelectPts*/ ) const {
 	return false;
 								// bool selected = false;
 								// M3dView view = selectInfo.view();

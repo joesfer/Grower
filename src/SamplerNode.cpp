@@ -189,6 +189,7 @@ void Sampler::SampleMesh( MFnMesh& mesh, int numSamples, bool useVertexColor, co
 	}
 
 	// cumulative probability distribution for faces
+	// FIXME: perform search instead of inflating an array of probabilities.
 	std::vector< int > triangleId;	
 	// normalize sorted areas against the smaller triangle (so smaller importance is 1)
 	const float commonDenominator = triSampling[ numTriangles - 1 ].importance;
@@ -202,7 +203,6 @@ void Sampler::SampleMesh( MFnMesh& mesh, int numSamples, bool useVertexColor, co
 	free( triSampling );
 
 	// Sample triangles
-
 	for( int i = 0; i < numSamples; i++ ) {
 		float r = (float)rand() / RAND_MAX;
 		int triId = triangleId[ (int)( r * ( triangleId.size() - 1 ) ) ];

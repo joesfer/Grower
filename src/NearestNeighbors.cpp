@@ -7,7 +7,7 @@
 
 #include "NearestNeighbors.h"
 
-bool KdTree::Init( const MPointArray& points, const MVectorArray& normals ) {
+bool KdTree::Init( const MPointArray& points, const MVectorArray& /*normals*/ ) {
 	//samples = new RenderLib::PhotonMapSamplesPool< AttractionPoint >();
 	//samples->Allocate( points.length() );
 	//AttractionPoint* data = samples->ReserveChunk( points.length() );
