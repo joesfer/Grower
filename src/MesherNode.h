@@ -63,6 +63,7 @@ public:
 	// the values later.
 	//
 	static	MObject		tubeSections;
+	static  MObject		thicknessScale;
 	static	MObject		thickness;
 	static	MObject		inputData;		// GrowerData
 	static	MObject		outMesh;		// output MFnMesh
@@ -76,8 +77,7 @@ public:
 
 private:
 	void CreateMesh( const GrowerData* data, const size_t activeNodes, const int tubeSections, const float* thickness, MPointArray& vertices, MIntArray& indices, MIntArray& polygonCounts ) const;
-	size_t CalculateThickness( std::vector< growerNode_t >& nodes, const float baseThickness, float* thicknessArray );
-
+	size_t CalculateThickness(std::vector< growerNode_t >& nodes, float thicknessScale, float* thicknessArray);
 };
 
 #endif // MesherNode_h__

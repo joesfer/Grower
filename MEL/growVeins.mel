@@ -1,3 +1,18 @@
+
+global proc AEGrowerShapeTemplate( string $nodeName )
+{
+	editorTemplate -beginScrollLayout;
+	editorTemplate -addControl "tubeSections";
+	editorTemplate -beginLayout "Thickness" -collapse 0;
+	editorTemplate -addControl "thicknessScale";
+	AEaddRampControl( $nodeName + ".thickness" );
+	editorTemplate -endLayout;
+
+	editorTemplate -addExtraControls;
+	editorTemplate -endScrollLayout;
+}
+
+
 proc createGrower(string $sampler, string $meshTransform, string $locatorTransform) 
 {
     // Create grower
@@ -15,9 +30,15 @@ proc createGrower(string $sampler, string $meshTransform, string $locatorTransfo
     // retrieve mesh bounds to work out the default thickness
     $bounds = `xform -q -boundingBox $meshTransform`;
     $width = $bounds[3] - $bounds[0];
-    
-    setAttr ($growerShape + ".thickness") ($width * 0.002);
-    // Create output mesh
+	setAttr ($growerShape + ".thickness[0].thickness_FloatValue") ($width * 0.05);
+	setAttr ($growerShape + ".thickness[0].thickness_Position") 0;
+	setAttr ($growerShape + ".thickness[0].thickness_Interp") 3;
+
+	setAttr ($growerShape + ".thickness[1].thickness_FloatValue") 0;
+	setAttr ($growerShape + ".thickness[1].thickness_Position") 1;
+	setAttr ($growerShape + ".thickness[1].thickness_Interp") 3;
+
+	// Create output mesh
     $mesh = `createNode mesh -parent $meshTransform`;
     connectAttr ($growerShape + ".outMesh ") ($mesh + ".inMesh" );
     sets -e -forceElement initialShadingGroup $mesh;
