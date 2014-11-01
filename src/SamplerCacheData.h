@@ -50,7 +50,12 @@ public:
 	static const MString typeName;
 	static const MTypeId id;
 
-	std::vector< int > triangleIds;
+	struct triSampling_t {
+		int triangle;
+		float cdf;
+	};
+
+	std::vector< triSampling_t > triangleIds;
 	std::vector< std::pair<float, float> > triangleBarycentricCoords;
 	std::vector<float> randomNumbers;
 };

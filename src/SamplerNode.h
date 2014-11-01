@@ -56,6 +56,7 @@ private:
 					 int numSamples, 
 					 bool vertexColor, 
 					 const MString& colorSetName, 
+					 bool doCachePlacement,
 					 SamplerCacheData* samplerCacheData,
 					 MPointArray& points,
 					 MVectorArray& normals );

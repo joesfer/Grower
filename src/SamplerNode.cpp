@@ -109,21 +109,19 @@ MStatus Sampler::compute( const MPlug& plug, MDataBlock& data )
 		SamplerCacheData* newData = NULL;
 		MDataHandle samplerCacheHandle;
 
-		const bool doCachePlacement = data.inputValue(cachePlacement, &returnStatus).asBool();
-		if ( doCachePlacement )
-		{ 
-			samplerCacheHandle = data.outputValue(samplerCache);
-			newData = (SamplerCacheData*)samplerCacheHandle.asPluginData();
-		
-			if (newData == NULL) {
-				// Create some output data
-				fnDataCreator.create(tmpid, &stat);
-				MCHECKERROR(stat, "compute : error creating SamplerCacheData")
+		samplerCacheHandle = data.outputValue(samplerCache);
+		newData = (SamplerCacheData*)samplerCacheHandle.asPluginData();
+
+		if (newData == NULL) {
+			// Create some output data
+			fnDataCreator.create(tmpid, &stat);
+			MCHECKERROR(stat, "compute : error creating SamplerCacheData")
 				newData = (SamplerCacheData*)fnDataCreator.data(&stat);
-				MCHECKERROR(stat, "compute : error gettin at proxy SamplerCacheData object")
-			}
+			MCHECKERROR(stat, "compute : error gettin at proxy SamplerCacheData object")
 		}
 
+		const bool doCachePlacement = data.inputValue(cachePlacement, &returnStatus).asBool();
+		
 		MFnMesh mesh( inputMeshHandle.asMesh() );
 		{					
 			MDataHandle outputHandle = data.outputValue( Sampler::outputSamples );
@@ -154,12 +152,11 @@ MStatus Sampler::compute( const MPlug& plug, MDataBlock& data )
 				world2LocalHandle.set( matrixDataObject );	
 			}
 		
-			SampleMesh(mesh, numSamples, useVertexColor, colorSet, newData, points, normals);
+			SampleMesh(mesh, numSamples, useVertexColor, colorSet, doCachePlacement, newData, points, normals);
 
 			// Assign the new data to the outputSurface handle
 
-			if (doCachePlacement /*&& 
-				newData != samplerCacheHandle.asPluginData()*/) 
+			if (newData != samplerCacheHandle.asPluginData()) 
 			{
 				samplerCacheHandle.set(newData);
 			}
@@ -177,27 +174,11 @@ MStatus Sampler::compute( const MPlug& plug, MDataBlock& data )
 	return MS::kSuccess;
 }
 
-struct triSampling_t {
-	int triangle;
-	float importance;
-};
-
-int ImportanceSort( const void* a, const void* b ) {
-	const float importanceA = static_cast< const triSampling_t* >(a)->importance;
-	const float importanceB = static_cast< const triSampling_t* >(b)->importance;
-	if ( importanceA < importanceB ) {
-		return 1;
-	} else if( importanceA > importanceB ) {
-		return -1;
-	} else {
-		return 0;
-	}
-}
-
 void Sampler::SampleMesh(MFnMesh& mesh,
 	int numSamples,
 	bool useVertexColor,
 	const MString& colorSetName,
+	bool doCachePlacement,
 	SamplerCacheData* samplerCacheData,
 	MPointArray& points,
 	MVectorArray& normals) {
@@ -219,13 +200,13 @@ void Sampler::SampleMesh(MFnMesh& mesh,
 	MPointArray verts;
 	mesh.getPoints(verts, MSpace::kWorld);
 
-	std::vector< int >* pTriangleId = NULL;
+	std::vector< SamplerCacheData::triSampling_t >* pTriangleId = NULL;
 	std::vector< std::pair<float, float> >* pBarycentricCoord = NULL;
 	std::vector<float>* pRNG = NULL;
 
-	bool useSampleCache = samplerCacheData != NULL &&
-		samplerCacheData->triangleIds.size() == numTriangles &&
-		samplerCacheData->randomNumbers.size() == numSamples;
+	bool useSampleCache = doCachePlacement && 
+						  samplerCacheData->randomNumbers.size() == numSamples &&
+						  samplerCacheData->triangleIds.size() == numTriangles;
 	
 	if (useSampleCache)
 	{
@@ -237,25 +218,13 @@ void Sampler::SampleMesh(MFnMesh& mesh,
 	{
 		// recompute sample placement
 
-		if (samplerCacheData != NULL)
-		{			
-			pTriangleId = &samplerCacheData->triangleIds;
-			pBarycentricCoord = &samplerCacheData->triangleBarycentricCoords;
-			pRNG = &samplerCacheData->randomNumbers;
-		}
-		else
-		{
-			pTriangleId = new std::vector<int>();
-			pBarycentricCoord = new std::vector<std::pair<float, float>>();
-			pRNG = new std::vector<float>();
-		}
-
-		pTriangleId->reserve(numTriangles);
-		pTriangleId->resize(0);
+		pTriangleId = &samplerCacheData->triangleIds;
+		pBarycentricCoord = &samplerCacheData->triangleBarycentricCoords;
+		pRNG = &samplerCacheData->randomNumbers;
+	
+		(*pTriangleId).resize(numTriangles);
 		(*pBarycentricCoord).resize(numSamples);
 		memset(&(*pBarycentricCoord)[0], 0, numSamples * sizeof(std::pair<float, float>));
-
-		triSampling_t* triSampling = (triSampling_t*)malloc(numTriangles * sizeof(triSampling_t));
 
 		pRNG->resize(numSamples);
 		for (int i = 0; i < numSamples; ++i)
@@ -282,15 +251,11 @@ void Sampler::SampleMesh(MFnMesh& mesh,
 				importance *= lightness;
 			}
 
-			triSampling[i].triangle = i;
-			triSampling[i].importance = importance;
+			(*pTriangleId)[i].triangle = i;
+			(*pTriangleId)[i].cdf = importance; // not a cdf yet
 		}
 
-		qsort(triSampling, numTriangles, sizeof(triSampling_t), ImportanceSort);
-		// FIXME: for now ensure numTriangles matches the mesh number of triangles (for the caching)
-		while (numTriangles > 0 && triSampling[numTriangles - 1].importance < 1e-5f) { numTriangles--; }
 		if (numTriangles == 0) {
-			free(triSampling);
 			if (samplerCacheData == NULL)
 			{
 				delete pTriangleId;
@@ -301,23 +266,24 @@ void Sampler::SampleMesh(MFnMesh& mesh,
 		}
 
 		// cumulative probability distribution for faces
-		// FIXME: perform search instead of inflating an array of probabilities.
-		// normalize sorted areas against the smaller triangle (so smaller importance is 1)
-		const float commonDenominator = triSampling[numTriangles - 1].importance;
-		for (unsigned int i = 0; i < numTriangles; i++) {
-			int area = (int)ceilf(triSampling[i].importance / commonDenominator);
-			for (int j = 0; j < area; j++) {
-				(*pTriangleId).push_back(triSampling[i].triangle);
-			}
+		float cdf = 0.f;
+		for (size_t i = 0; i < numTriangles; ++i)
+		{
+			cdf +=  (*pTriangleId)[i].cdf;
+			(*pTriangleId)[i].cdf = cdf;
 		}
-		free(triSampling);
 	}
 
 
 	// Sample triangles
+	const float maxTriangleCDF = (*pTriangleId)[(*pTriangleId).size()-1].cdf;
 	for (int i = 0; i < numSamples; i++) {
-		float r = (*pRNG)[i];
-		int triId = (*pTriangleId)[ (int)( r * ((*pTriangleId).size()-1))];
+		float r = (*pRNG)[i] * maxTriangleCDF; // non-normalised CDF
+		int triId = 0;
+		while(triId < (*pTriangleId).size() && (*pTriangleId)[triId].cdf < r )
+		{
+			triId++;
+		}
 
 		// sample using barycentric coordinates
 		float u, v;
@@ -350,13 +316,6 @@ void Sampler::SampleMesh(MFnMesh& mesh,
 		MVector n = vNormals[iA] * w + vNormals[iB] * u + vNormals[iC] * v;
 		n.normalize();
 		normals.append(n);
-	}
-
-	if (samplerCacheData == NULL)
-	{
-		delete pTriangleId;
-		delete pBarycentricCoord;
-		delete pRNG;
 	}
 }
 
