@@ -288,7 +288,7 @@ void Sampler::SampleMesh(MFnMesh& mesh,
 
 		qsort(triSampling, numTriangles, sizeof(triSampling_t), ImportanceSort);
 		// FIXME: for now ensure numTriangles matches the mesh number of triangles (for the caching)
-		//while (numTriangles > 0 && triSampling[numTriangles - 1].importance < 1e-5f) { numTriangles--; }
+		while (numTriangles > 0 && triSampling[numTriangles - 1].importance < 1e-5f) { numTriangles--; }
 		if (numTriangles == 0) {
 			free(triSampling);
 			if (samplerCacheData == NULL)
@@ -305,10 +305,10 @@ void Sampler::SampleMesh(MFnMesh& mesh,
 		// normalize sorted areas against the smaller triangle (so smaller importance is 1)
 		const float commonDenominator = triSampling[numTriangles - 1].importance;
 		for (unsigned int i = 0; i < numTriangles; i++) {
-			//int area = (int)ceilf(triSampling[i].importance / commonDenominator);
-			//for (int j = 0; j < area; j++) {
+			int area = (int)ceilf(triSampling[i].importance / commonDenominator);
+			for (int j = 0; j < area; j++) {
 				(*pTriangleId).push_back(triSampling[i].triangle);
-			//}
+			}
 		}
 		free(triSampling);
 	}
