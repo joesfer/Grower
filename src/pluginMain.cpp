@@ -11,6 +11,9 @@
 #include "MesherNode.h"
 #include "MesherUI.h"
 #include "GrowerData.h"
+#include "SamplerCacheData.h"
+#include "SamplePreviewShape.h"
+#include "SamplePreviewShapeUI.h"
 
 #include <maya/MFnPlugin.h>
 
@@ -28,6 +31,12 @@ MStatus initializePlugin( MObject obj )
 	MStatus   status;
 	MFnPlugin plugin( obj, "Jose Esteve. www.joesfer.com", "2014", "Any");
 
+	status = plugin.registerData(SamplerCacheData::typeName, SamplerCacheData::id, SamplerCacheData::creator, MPxData::kGeometryData);
+	if (!status) {
+		status.perror("registerData");
+		return status;
+	}
+
 	status = plugin.registerNode( "Sampler", Sampler::id, Sampler::creator, Sampler::initialize );
 	if (!status) {
 		status.perror("registerNode");
@@ -39,7 +48,7 @@ MStatus initializePlugin( MObject obj )
 		status.perror("registerData");
 		return status;
 	}
-
+	
 	status = plugin.registerNode( "Grower", Grower::id, Grower::creator, Grower::initialize );
 	if (!status) {
 		status.perror("registerNode");
@@ -59,6 +68,20 @@ MStatus initializePlugin( MObject obj )
 		return status;
 	}
 
+	status = plugin.registerData(SamplePreviewData::typeName, SamplePreviewData::id, SamplePreviewData::creator, MPxData::kGeometryData);
+	if (!status) {
+		status.perror("registerData");
+		return status;
+	}
+
+	status = plugin.registerShape(SampleShape::typeName, SampleShape::id,
+		SampleShape::creator, SampleShape::initialize,
+		SampleShapeUI::creator);
+	if (!status) {
+		status.perror("registerShape");
+		return status;
+	}
+	
 	return status;
 }
 
@@ -87,6 +110,12 @@ MStatus uninitializePlugin( MObject obj)
 		return status;
 	}
 
+	status = plugin.deregisterData(SamplerCacheData::id);
+	if (!status) {
+		status.perror("deregisterData");
+		return status;
+	}
+
 	status = plugin.deregisterNode( Grower::id );
 	if (!status) {
 		status.perror("deregisterNode");
@@ -102,6 +131,12 @@ MStatus uninitializePlugin( MObject obj)
 	status = plugin.deregisterNode( Shape::id );
 	if (!status) {
 		status.perror("deregisterNode");
+		return status;
+	}
+
+	status = plugin.deregisterData(SamplePreviewData::id);
+	if (!status) {
+		status.perror("deregisterData");
 		return status;
 	}
 

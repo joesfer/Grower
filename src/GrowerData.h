@@ -17,6 +17,7 @@
 #include <vector>
 
 #include "common.h"
+#include "NearestNeighbors.h"
 
 #define INVALID_PARENT	1 << 30
 struct growerNode_t {
@@ -79,5 +80,17 @@ public:
 #endif
 	std::vector< growerNode_t > nodes;
 	MBoundingBox bounds;
+
+	// cache data
+	std::vector< std::vector<RenderLib::DataStructures::SampleIndex_t> > m_cachedAffectedPoints;
+	std::vector< std::vector<RenderLib::DataStructures::SampleIndex_t> > m_cachedClosestNode;
+	std::vector< std::vector<RenderLib::DataStructures::SampleIndex_t> > m_cachedBannedAliveNodes;
+	std::vector< std::vector<bool> >									 m_cachedActiveAttractors;
+
+	float m_cachedSearchRadius = -1;
+	float m_cachedKillRadius = -1;
+	int	  m_cachedNumNeighbours = -1;
+	float m_cachedNodeGrowDist = -1;
+
 };
 #endif // GrowerData_h__

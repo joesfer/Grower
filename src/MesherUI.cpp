@@ -236,7 +236,7 @@ void MesherUI::draw( const MDrawRequest & request, M3dView & view ) const{
 //////////////////////////////////////////////////////////////////////////
 bool MesherUI::select( MSelectInfo &/*selectInfo*/, MSelectionList &/*selectionList*/,
 						MPointArray &/*worldSpaceSelectPts*/ ) const {
-return false;
+return true;
 						// bool selected = false;
 						// bool componentSelected = false;
 						// bool hilited = false;
@@ -373,7 +373,15 @@ void MesherUI::DrawWireframe( const MDrawRequest & request, M3dView & view ) con
 	glPointSize( 3.0f );
 	for( unsigned int i = 0; i < geom->samples.size(); i++ ) {
 		if ( geom->samples[ i ].active ) {
-			glColor3f( 0, 1, 0 );
+			switch (i)
+			{
+			case 0: glColor3f(1, 1, 0); break;
+			case 1: glColor3f(1, 0, 1); break;
+			case 2: glColor3f(0, 1, 1); break;
+			case 3: glColor3f(0, 0, 0); break;
+			default:glColor3f(0, 1, 0); break;
+			}
+
 		} else {
 			glColor3f( 1, 0, 0 );
 		}

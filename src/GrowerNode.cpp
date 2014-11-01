@@ -56,6 +56,7 @@ const MTypeId   Grower::id( 0x80097 );
 const MString	Grower::typeName( "GrowerNode" );
 
 // Attributes
+MObject		Grower::cacheSolution;
 MObject		Grower::inputSamples;
 MObject		Grower::inputPoints;
 MObject		Grower::inputNormals;
@@ -121,24 +122,59 @@ MStatus Grower::compute( const MPlug& plug, MDataBlock& data )
 		MFnMatrixData matrixData( data.inputValue( Grower::world2Local ).data() );
 		MMatrix matrix = matrixData.matrix();
 		sourcePos *= matrix;
+
+		float searchRadius = data.inputValue( Grower::searchRadius ).asFloat(); 
+		float killRadius   = data.inputValue( Grower::killRadius ).asFloat();
+		float nodeGrowDist = data.inputValue( Grower::growDist ).asFloat();
+		int maxNeighbors   = data.inputValue( Grower::maxNeighbors ).asInt();
+
+		// invalidate the cache if the input settings differ too much (note for
+		// the distances we're using the multiplier, not the absolute distance
+		// we'll pass in to the Grow method below).
+
+		const bool cacheGrowth = data.inputValue(cacheSolution, &stat).asBool();
+
+		bool useCachedSolution = cacheGrowth && 
+								 fabsf(searchRadius - newData->m_cachedSearchRadius) < 1e-1f &&
+								 fabsf(killRadius - newData->m_cachedKillRadius) < 1e-1f &&
+								 maxNeighbors == newData->m_cachedNumNeighbours &&
+								 fabsf(nodeGrowDist - newData->m_cachedNodeGrowDist) < 1e-1f;
+
+		if ( !useCachedSolution )
+		{
+			// we'll regenerate the cache inside the grow method, store the
+			// input parameters here for next time.
+			newData->m_cachedSearchRadius = searchRadius;
+			newData->m_cachedKillRadius = killRadius;
+			newData->m_cachedNumNeighbours = maxNeighbors;
+			newData->m_cachedNodeGrowDist = nodeGrowDist;
+		}
+
+		// calculate the scene-sized distance thresholds
 		float maxExtents = (float)__max( srcBounds.width(), __max( srcBounds.height(), srcBounds.depth() ) );
-		float searchRadius = data.inputValue( Grower::searchRadius ).asFloat() * maxExtents;
-		float killRadius = data.inputValue( Grower::killRadius ).asFloat() * maxExtents;
-		float nodeGrowDist = data.inputValue( Grower::growDist ).asFloat() * maxExtents;
-		int maxNeighbors = data.inputValue( Grower::maxNeighbors ).asInt();
+		searchRadius = searchRadius * maxExtents;
+		killRadius	 = killRadius	* maxExtents;
+		nodeGrowDist = nodeGrowDist * maxExtents;
+
 
 		newData->nodes.resize( 0 );
 #if GROWER_DISPLAY_DEBUG_INFO
 		newData->samples.resize( 0 );
-		Grow( pointVec, normalVec, sourcePos, searchRadius, killRadius, maxNeighbors, nodeGrowDist, newData->nodes, newData->samples );
-#else 
-		Grow( pointVec, normalVec, sourcePos, searchRadius, killRadius, maxNeighbors, nodeGrowDist, newData->nodes );
 #endif
+		Grow( pointVec, 
+			  normalVec, 
+			  sourcePos, 
+			  searchRadius, 
+			  killRadius, 
+			  maxNeighbors, 
+			  nodeGrowDist, 
+			  useCachedSolution, // we either use the cache, or generate it
+			  newData);
+	
 		newData->bounds.clear();
 		for( unsigned int i = 0; i < newData->nodes.size(); i++ ) {
 			newData->bounds.expand( newData->nodes[ i ].pos );
 		}
-
 
 		// Assign the new data to the outputSurface handle
 
@@ -187,6 +223,11 @@ MStatus Grower::initialize()
 	MFnTypedAttribute	typedFn;	
 	MFnCompoundAttribute cFn;
 	MStatus				stat;
+
+	cacheSolution = nFn.create("cacheGrowth", "cg", MFnNumericData::kBoolean, false, &stat);
+	if (!stat) return stat;
+	nFn.setWritable(true);
+	nFn.setStorable(true);
 
 	inputPoints = typedFn.create( "samplesPoints", "sp", MFnData::kPointArray );
 	typedFn.setStorable( false );
@@ -241,7 +282,9 @@ MStatus Grower::initialize()
 
 	// Add the attributes we have created to the node
 	//
-	stat = addAttribute( inputSamples );
+	stat = addAttribute(cacheSolution);
+	if (!stat) { stat.perror("addAttribute"); return stat; }
+	stat = addAttribute(inputSamples);
 	if (!stat) { stat.perror("addAttribute"); return stat;}
 	stat = addAttribute( inputPosition );
 	if (!stat) { stat.perror("addAttribute"); return stat;}
@@ -258,6 +301,7 @@ MStatus Grower::initialize()
 	stat = addAttribute( maxNeighbors );
 	if (!stat) { stat.perror("addAttribute"); return stat;}
 
+	attributeAffects( cacheSolution, aoMeshData );
 	attributeAffects( inputSamples, aoMeshData );
 	attributeAffects( inputPosition, aoMeshData );
 	attributeAffects( world2Local, aoMeshData );
@@ -282,18 +326,26 @@ inline void insertUnique(std::vector<RenderLib::DataStructures::SampleIndex_t>& 
 }
 
 //////////////////////////////////////////////////////////////////////////
-#if GROWER_DISPLAY_DEBUG_INFO
-void Grower::Grow( const MPointArray& points, const MVectorArray& normals, const MPoint& sourcePos, const float searchRadius, const float killRadius, const int maxNeighbors, const float nodeGrowDist, ::std::vector< growerNode_t >& nodes, ::std::vector< attractionPointVis_t >& /*attractors*/ ) {
-#else
-void Grower::Grow( const MPointArray& points, const MVectorArray& normals, const MPoint& sourcePos, const float searchRadius, const float killRadius, const int maxNeighbors, const float nodeGrowDist, ::std::vector< growerNode_t >& nodes ) {
-#endif
+
+void Grower::Grow( const MPointArray& points, 
+				   const MVectorArray& normals, 
+				   const MPoint& sourcePos, 
+				   const float searchRadius, 
+				   const float killRadius, 
+				   const int maxNeighbors, 
+				   const float nodeGrowDist, 
+				   bool useCachedSolution,
+				   GrowerData* inOutData) {
+
 	using namespace std;
 
+	std::vector< growerNode_t >& nodes = inOutData->nodes;
+	
 	KdTree knn;
 	if ( !knn.Init( points, normals ) ) {
 		return;
 	}
-
+	
 	vector< RenderLib::DataStructures::SampleIndex_t > aliveNodes;
 
 	growerNode_t seed;
@@ -316,61 +368,109 @@ void Grower::Grow( const MPointArray& points, const MVectorArray& normals, const
 	nodes.push_back( seed );
 	aliveNodes.push_back( 0 );
 
+	const bool generateSolutionCache = !useCachedSolution;
+
+	if (generateSolutionCache)
+	{
+		inOutData->m_cachedAffectedPoints.resize(0);
+		inOutData->m_cachedClosestNode.resize(0);
+		inOutData->m_cachedBannedAliveNodes.resize(0);
+		inOutData->m_cachedActiveAttractors.resize(0);
+	}
+
 	vector< RenderLib::DataStructures::SampleIndex_t > affectedPoints;
+	vector< RenderLib::DataStructures::SampleIndex_t > bannedAliveNodes;
+
+	int iterationCount = 0;
 
 	while( !aliveNodes.empty() ) {
 		vector< RenderLib::DataStructures::SampleIndex_t > newNodes;
 		{
 			affectedPoints.resize(0);
 
-			// find the closest attraction point to each alive node
-			for( size_t i = 0; i < aliveNodes.size(); i++ ) {
-				const RenderLib::DataStructures::SampleIndex_t aliveNode = aliveNodes[ i ];
-				size_t found = knn.NearestNeighbors( nodes[ aliveNode ].pos, searchRadius, maxNeighbors, neighbors );
-				assert( (int)found <= maxNeighbors );
-#if _DEBUG
-				for( size_t j = 0; j < found; j++ ) {
-					const double d = points[neighbors[j]].distanceTo(nodes[aliveNode].pos);
-					assert(d <= searchRadius);
+			if (useCachedSolution && inOutData->m_cachedAffectedPoints.size() > iterationCount)
+			{
+				affectedPoints.resize(inOutData->m_cachedAffectedPoints[iterationCount].size());
+				if (affectedPoints.size() > 0)
+				{
+					memcpy(&affectedPoints[0], &inOutData->m_cachedAffectedPoints[iterationCount][0], inOutData->m_cachedAffectedPoints[iterationCount].size() * sizeof(RenderLib::DataStructures::SampleIndex_t));
 				}
+
+				closestNode.resize(inOutData->m_cachedClosestNode[iterationCount].size());
+				if (closestNode.size() > 0)
+				{
+					memcpy(&closestNode[0], &inOutData->m_cachedClosestNode[iterationCount][0], inOutData->m_cachedClosestNode[iterationCount].size() * sizeof(RenderLib::DataStructures::SampleIndex_t));
+				}
+
+				bannedAliveNodes.resize(inOutData->m_cachedBannedAliveNodes[iterationCount].size());
+				if (bannedAliveNodes.size() > 0)
+				{
+					memcpy(&bannedAliveNodes[0], &inOutData->m_cachedBannedAliveNodes[iterationCount][0], inOutData->m_cachedBannedAliveNodes[iterationCount].size() * sizeof(RenderLib::DataStructures::SampleIndex_t));
+				}
+				iterationCount++;
+			}
+			else
+			{
+				// find the closest attraction point to each alive node
+				for (size_t i = 0; i < aliveNodes.size(); i++) {
+					const RenderLib::DataStructures::SampleIndex_t aliveNode = aliveNodes[i];
+					size_t found = knn.NearestNeighbors(nodes[aliveNode].pos, searchRadius, maxNeighbors, neighbors);
+					assert((int)found <= maxNeighbors);
+#if _DEBUG
+					for (size_t j = 0; j < found; j++) {
+						const double d = points[neighbors[j]].distanceTo(nodes[aliveNode].pos);
+						assert(d <= searchRadius);
+					}
 #endif
 
-				for( size_t j = 0; j < found; j++ ) {
-					RenderLib::DataStructures::SampleIndex_t neighbor = neighbors[ j ];
+					for (size_t j = 0; j < found; j++) {
+						RenderLib::DataStructures::SampleIndex_t neighbor = neighbors[j];
 
-					// TODO: since we're checking whether the node is active outside of the knn.NearestNeighbors query
-					// some (or many) of the returned neighbors may be invalid, and therefore we're wasting space
-					// in the neighbors array. It would be more efficient to store the validity of a node within the
-					// kdtree, to skip invalid nodes during the nearestNeighbors query, but this would "pollute" the
-					// kdtree class with irrelevant filtering knowledge (we want to keep the class generic for further reuse).
-					if( !activeAttractors[neighbor] ) continue;
+						// TODO: since we're checking whether the node is active outside of the knn.NearestNeighbors query
+						// some (or many) of the returned neighbors may be invalid, and therefore we're wasting space
+						// in the neighbors array. It would be more efficient to store the validity of a node within the
+						// kdtree, to skip invalid nodes during the nearestNeighbors query, but this would "pollute" the
+						// kdtree class with irrelevant filtering knowledge (we want to keep the class generic for further reuse).
+						if (!activeAttractors[neighbor]) continue;
 
-					insertUnique(affectedPoints, neighbor);
+						insertUnique(affectedPoints, neighbor);
 
-					if ( closestNode[neighbor] != UINT_MAX ) {
-						if( closestNode[neighbor] != aliveNode ) {
-							float dist = (float)nodes[ aliveNode ].pos.distanceTo( points[neighbor] );
-							if ( dist < distance[neighbor] ) {
-								closestNode[neighbor] = aliveNode;
-								distance[neighbor] = dist;
+						if (closestNode[neighbor] != UINT_MAX) {
+							if (closestNode[neighbor] != aliveNode) {
+								float dist = (float)nodes[aliveNode].pos.distanceTo(points[neighbor]);
+								if (dist < distance[neighbor]) {
+									closestNode[neighbor] = aliveNode;
+									distance[neighbor] = dist;
+								}
 							}
 						}
-					} else {
-						closestNode[neighbor] = aliveNode;													
-						distance[neighbor]	  = (float)nodes[ aliveNode ].pos.distanceTo( points[neighbor] );
-					}
-				}
-			}
+						else 
+						{
+							closestNode[neighbor] = aliveNode;
+							distance[neighbor] = (float)nodes[aliveNode].pos.distanceTo(points[neighbor]);
+						}
+					} // for found
+				} // for alive nodes
 
+				inOutData->m_cachedAffectedPoints.push_back(affectedPoints);
+				inOutData->m_cachedClosestNode.push_back(closestNode);
+				
+			} // else useCachedSolution
+			
 			// those nodes which are marked as closest to an attraction point
 			// are the candidates to spawn new nodes, and therefore are the
 			// only ones which remain active for the next iteration
 			aliveNodes.resize(0);
 			for( size_t i = 0; i < affectedPoints.size(); i++ ) {
-				RenderLib::DataStructures::SampleIndex_t node = closestNode[affectedPoints[i]];								
+				RenderLib::DataStructures::SampleIndex_t node = closestNode[affectedPoints[i]];
 				insertUnique(aliveNodes, node);
 			}
 
+			if (generateSolutionCache)
+			{
+				inOutData->m_cachedBannedAliveNodes.push_back(std::vector<RenderLib::DataStructures::SampleIndex_t>());
+			}
+			
 			// spawn new nodes	
 			for( size_t i = 0; i < aliveNodes.size(); i++ ) {
 
@@ -396,18 +496,36 @@ void Grower::Grow( const MPointArray& points, const MVectorArray& normals, const
 				newNode.pos = srcNode.pos + nodeGrowDist * growDirection;
 
 				bool duplicated = false;
-				for( size_t j = 0; j < srcNode.children.size(); j++ ) {
-					if( nodes[ srcNode.children[ j ] ].pos.distanceTo( newNode.pos ) <= 0.0001f ) {
-						duplicated = true;
-						break;
+				if (generateSolutionCache)
+				{ 
+					std::vector<RenderLib::DataStructures::SampleIndex_t>& cachedBannedAliveNodesEntry = inOutData->m_cachedBannedAliveNodes[inOutData->m_cachedBannedAliveNodes.size() - 1];
+					for (size_t j = 0; j < srcNode.children.size(); j++) {
+						if (nodes[srcNode.children[j]].pos.distanceTo(newNode.pos) <= 0.0001f) {
+							duplicated = true;
+							cachedBannedAliveNodesEntry.push_back(nodeIdx);
+							break;
+						}
+					}
+				}
+				else
+				{
+					for (size_t j = 0; j < bannedAliveNodes.size(); ++j)
+					{
+						if (bannedAliveNodes[j] == nodeIdx)
+						{
+							duplicated = true;
+							break;
+						}
 					}
 				}
 
 				if ( duplicated ) {
 					// erase active element, as it is stuck in a loop trying to produce the same children
+				
 					aliveNodes[ i ] = aliveNodes[ aliveNodes.size() - 1 ];
 					aliveNodes.resize( aliveNodes.size() - 1 );
-					i--;				
+					i--;		
+				
 				} else {
 					newNode.parent = nodeIdx;
 					RenderLib::DataStructures::SampleIndex_t newNodeIdx = (RenderLib::DataStructures::SampleIndex_t)nodes.size();
@@ -422,14 +540,18 @@ void Grower::Grow( const MPointArray& points, const MVectorArray& normals, const
 		}
 
 		// use the new spawned nodes to kill close attractor points
-		for( size_t i = 0; i < newNodes.size(); i++ ) {
-			size_t found = knn.NearestNeighbors( nodes[ newNodes[ i ] ].pos, killRadius, maxNeighbors, neighbors );
-			assert( (int)found <= maxNeighbors );
-			for( size_t j = 0; j < found; j++ ) {
-				activeAttractors[neighbors[ j ]] = false;
+		if (generateSolutionCache)
+		{
+			for (size_t i = 0; i < newNodes.size(); i++) {
+				size_t found = knn.NearestNeighbors(nodes[newNodes[i]].pos, killRadius, maxNeighbors, neighbors);
+				assert((int)found <= maxNeighbors);
+				for (size_t j = 0; j < found; j++) {
+					activeAttractors[neighbors[j]] = false;
+				}
 			}
 		}
-	}
+	
+	} // while alive
 
 	// reactivate all the samples, we're going to retrieve the normals from them
 	for( unsigned int i = 0; i < points.length(); i++ ) {
@@ -470,7 +592,7 @@ void Grower::Grow( const MPointArray& points, const MVectorArray& normals, const
 				const double toChildLength = toChild.length();
 				toChild /= toChildLength;
 				const double cosAngle = fromParent * toChild;
-				if (  cosAngle < minCosAngle ) { 
+				if ( cosAngle < minCosAngle ) { 
 
 					child.parent = node.parent;
 					parent.children.push_back( node.children[ j ] );
@@ -487,14 +609,12 @@ void Grower::Grow( const MPointArray& points, const MVectorArray& normals, const
 		}
 	}
 
-//#if GROWER_DISPLAY_DEBUG_INFO
-//	const AttractionPoint* samples = knn.pm->GetSamples();
-//	unsigned int nSamples = knn.pm->NumSamples();
-//	for( unsigned int i = 0; i < nSamples; i++ ) {
-//		attractionPointVis_t p;
-//		p.pos = samples[ i ].pos;
-//		p.active = samples[ i ].active;
-//		attractors.push_back( p );
-//	}
-//#endif
+#if GROWER_DISPLAY_DEBUG_INFO
+	for (unsigned int i = 0; i < points.length(); i++) {
+		attractionPointVis_t p;
+		p.pos = points[i];
+		p.active = activeAttractors[i];
+		inOutData->samples.push_back( p );
+	}
+#endif
 }

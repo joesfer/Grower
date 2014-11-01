@@ -13,7 +13,9 @@
 #include <maya/MFnMesh.h>
 #include <maya/MPointArray.h>
 #include <maya/MVectorArray.h>
- 
+
+class SamplerCacheData;
+
 class Sampler : public MPxNode
 {
 public:
@@ -31,6 +33,7 @@ public:
 	// the node will have.  These handles are needed for getting and setting
 	// the values later.
 	//
+	static  MObject		cachePlacement; // whether to stick samples to surface by caching previously generated solution until topology changes.
 	static  MObject		nSamples;		// number of desired samples
 	static	MObject		inputMesh;		// input mesh to sample
 	static	MObject		useVertexCol;	// use vertex color to determine where to sample
@@ -40,6 +43,7 @@ public:
 	static	MObject		outputNormals;	// child of outputSamples
 	static	MObject		worldToLocal;	// output copy of mesh transform
 
+	static  MObject		samplerCache;	// SamplerCacheData
 
 	// The typeid is a unique 32bit identifier that describes this node.
 	// It is used to save and retrieve nodes of this type from the binary
@@ -48,7 +52,13 @@ public:
 	static	MTypeId		id;
 
 private:
-	void SampleMesh( MFnMesh& mesh, int numSamples, bool vertexColor, const MString& colorSetName, MPointArray& points, MVectorArray& normals );
+	void SampleMesh( MFnMesh& mesh, 
+					 int numSamples, 
+					 bool vertexColor, 
+					 const MString& colorSetName, 
+					 SamplerCacheData* samplerCacheData,
+					 MPointArray& points,
+					 MVectorArray& normals );
 };
 
 #endif
