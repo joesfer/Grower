@@ -12,7 +12,8 @@
 #include <maya/MPointArray.h>
 #include <maya/MVector.h>
 #include <maya/MVectorArray.h>
-#include <RenderLib.h>
+#include <renderLib.h>
+#include <limits.h>
 #pragma comment( lib, "RenderLib.lib" )
 
 class AttractionPoint {
