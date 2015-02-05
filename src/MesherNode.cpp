@@ -268,7 +268,7 @@ void Shape::CreateMesh( const GrowerData* data, const size_t activeNodes, const 
 		}
 		trimmedNodes[ i ] = trimmed ? TS_TRIMMED : TS_ACTIVE;
 		if ( !trimmed ) {
-			remaining += __max( 1, data->nodes[ i ].children.size() );
+			remaining += std::max( (size_t)1, data->nodes[ i ].children.size() );
 		}
 	}
 	//assert( remaining == activeNodes );
@@ -321,7 +321,7 @@ void Shape::CreateMesh( const GrowerData* data, const size_t activeNodes, const 
 		t[ 3 ][ 2 ] = node.pos.z + node.surfaceNormal.z * thick; 
 		t[ 3 ][ 3 ] = 1;
 		float radStep = 2.0f * 3.141592f / tubeSections;
-		for( unsigned int k = 0; k < __max( 1, (unsigned int)node.children.size() ); k++ ) {
+		for( unsigned int k = 0; k < std::max( (unsigned int)1, (unsigned int)node.children.size() ); k++ ) {
 			float angle = 0;
 			for( unsigned int j = 0; j < (unsigned int)tubeSections; j++ ) {
 				MPoint p( thick * cos( angle ), thick * sin( angle ), 0 );
@@ -331,7 +331,7 @@ void Shape::CreateMesh( const GrowerData* data, const size_t activeNodes, const 
 		}
 
 		vertexOffsets[ i ] = vOffset;
-		vOffset += tubeSections * __max( 1, (unsigned int)node.children.size() );
+		vOffset += tubeSections * std::max( (unsigned int)1, (unsigned int)node.children.size() );
 	}
 
 	assert( vOffset == remaining * tubeSections );

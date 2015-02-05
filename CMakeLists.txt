@@ -23,7 +23,11 @@ if(WIN32)
 		set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHsc")
 
     endif(MSVC)
-endif (WIN32)
+else()
+add_definitions(-D REQUIRE_IOSTREAM)
+add_definitions(-D _BOOL)
+add_definitions(-D LINUX)
+endif()
 
 # Set the Maya version and architecture (default values)
 set(MAYA_VERSION 2011 CACHE STRING "Maya Version")
@@ -33,16 +37,12 @@ if(WIN32)
 	set( MAYA_USER_DIR $ENV{USERPROFILE}/Documents/maya CACHE PATH "Maya user home directory" )
 	set( MAYA_ROOT $ENV{PROGRAMFILES}/Autodesk/Maya${MAYA_VERSION} CACHE PATH "Maya installation directory" )
 	set( MAYA_SDK_DEFINITIONS "_AFXDLL;_MBCS;NT_PLUGIN;REQUIRE_IOSTREAM" )
-
+    set( MAYA_HEADERS_DIR ${MAYA_ROOT}/include )
+    set( MAYA_LIBRARY_DIR ${MAYA_ROOT}/lib )
 else()
-	set( MAYA_USER_DIR $ENV{HOME}/maya CACHE PATH "Maya user home directory" )
-	set( MAYA_ROOT /usr/autodesk/maya${MAYA_VERSION}-${MAYA_ARCH} )
+  set( MAYA_HEADERS_DIR "/usr/autodesk/maya/include" CACHE PATH "Maya Include Dir" )
+  set( MAYA_LIBRARY_DIR "/usr/autodesk/maya/lib" CACHE PATH "Maya Library Dir" )
 endif()
-
-find_package(OpenGL)
-
-set( MAYA_HEADERS_DIR ${MAYA_ROOT}/include )
-set( MAYA_LIBRARY_DIR ${MAYA_ROOT}/lib )
 
 set( CORELIB_INCLUDE_DIR  ${CMAKE_CURRENT_SOURCE_DIR}/CoreLib/include CACHE STRING "path to coreLib include folder" )
 set( CORELIB_LIBRARY_DIR  ${CMAKE_CURRENT_SOURCE_DIR}/CoreLib/lib/${CMAKE_BUILD_TYPE} CACHE STRING "path to coreLib libray folder" )
@@ -58,24 +58,39 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/../bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/../bin)
 
 # add base to include directories
-include_directories ( ${PUBLIC_INCLUDE_DIRS} ${MAYA_HEADERS_DIR} ${RENDERLIB_INCLUDE_DIR} ${CORELIB_INCLUDE_DIR} ${OPENGL_INCLUDE_DIR})
+include_directories ( ${PUBLIC_INCLUDE_DIRS} ${MAYA_HEADERS_DIR} ${RENDERLIB_INCLUDE_DIR} ${CORELIB_INCLUDE_DIR})
 link_directories ( ${PUBLIC_LIBRARY_DIRS} ${MAYA_LIBRARY_DIR} ${RENDERLIB_LIBRARY_DIR} ${CORELIB_LIBRARY_DIR})
 
+if(WIN32)
 set( RENDER_LIB RenderLib.lib )
 set( CORE_LIB CoreLib.lib )
-set( OPENGL_LIB opengl32.lib )
+else()
+set( RENDER_LIB RenderLib )
+set( CORE_LIB CoreLib )
+endif()
 set ( MAYA_DEFINITIONS "_AFXDLL,_MBCS,NT_PLUGIN,REQUIRE_IOSTREAM" )
+
+if(WIN32)
 set( MAYASDK_LIBRARIES "Foundation.lib" "OpenMaya.lib" "OpenMayaUI.lib" "OpenMayaAnim.lib" "OpenMayaFX.lib" "OpenMayaRender.lib" )
+else()
+set( MAYASDK_LIBRARIES "Foundation" "OpenMaya" "OpenMayaUI" "OpenMayaAnim" "OpenMayaFX" "OpenMayaRender" )
+endif()
 
 #specify app sources
 file(GLOB_RECURSE SOURCE_FILES src/*.c src/*.cpp src/*.h src/*.inl src/*.hpp src/*.glsl src/*.ui)
 
 add_library( ${MAYA_PLUGIN_NAME} SHARED ${SOURCE_FILES} )
-target_link_libraries( ${MAYA_PLUGIN_NAME} ${MAYASDK_LIBRARIES} ${OPENGL_LIB} ${RENDER_LIB} ${CORE_LIB})
+target_link_libraries( ${MAYA_PLUGIN_NAME} ${MAYASDK_LIBRARIES} ${RENDER_LIB} ${CORE_LIB})
 
 set_target_properties( ${MAYA_PLUGIN_NAME} PROPERTIES COMPILE_DEFINITIONS ${MAYA_DEFINITIONS} )
 set_target_properties( ${MAYA_PLUGIN_NAME} PROPERTIES OUTPUT_NAME ${MAYA_PLUGIN_NAME} )
+if(WIN32)
 set_target_properties( ${MAYA_PLUGIN_NAME} PROPERTIES SUFFIX ".mll" )
+else()
+set_target_properties( ${MAYA_PLUGIN_NAME} PROPERTIES SUFFIX ".so" )
+endif()
 set_target_properties( ${MAYA_PLUGIN_NAME} PROPERTIES CLEAN_DIRECT_OUTPUT 1 )
+if(WIN32)
 set_target_properties( ${MAYA_PLUGIN_NAME} PROPERTIES LINK_FLAGS "/export:initializePlugin /export:uninitializePlugin" )
+endif()
 

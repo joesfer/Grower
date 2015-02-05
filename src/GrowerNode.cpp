@@ -121,7 +121,7 @@ MStatus Grower::compute( const MPlug& plug, MDataBlock& data )
 		MFnMatrixData matrixData( data.inputValue( Grower::world2Local ).data() );
 		MMatrix matrix = matrixData.matrix();
 		sourcePos *= matrix;
-		float maxExtents = (float)__max( srcBounds.width(), __max( srcBounds.height(), srcBounds.depth() ) );
+		float maxExtents = (float)std::max( srcBounds.width(), std::max( srcBounds.height(), srcBounds.depth() ) );
 		float searchRadius = data.inputValue( Grower::searchRadius ).asFloat() * maxExtents;
 		float killRadius = data.inputValue( Grower::killRadius ).asFloat() * maxExtents;
 		float nodeGrowDist = data.inputValue( Grower::growDist ).asFloat() * maxExtents;

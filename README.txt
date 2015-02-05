@@ -35,8 +35,8 @@ Compilation:
 
 	- The project depends on the CoreLib and RenderLib shared libraries, included as submodules.
 		in <grower_folder>
-		git submodules init
-		git submodules update
+		git submodule init
+		git submodule update
 		
 		git should say 
 		Cloning into 'CoreLib'...
