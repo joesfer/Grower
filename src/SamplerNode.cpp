@@ -6,6 +6,7 @@
 */
 
 #include "SamplerNode.h"
+#include "SamplerCacheData.h"
 
 #include <maya/MPlug.h>
 #include <maya/MDataBlock.h>
@@ -28,8 +29,30 @@
 #include <maya/MPlug.h>
 #include <maya/MPlugArray.h>
 #include <maya/MGlobal.h>
+#include <maya/MFnPluginData.h>
 
 #include <vector>
+#include <algorithm>
+
+//////////////////////////////////////////////////////////////////////
+//
+// Error checking
+//
+//    MCHECKERROR       - check the status and print the given error message
+//    MCHECKERRORNORET  - same as above but does not return
+//
+//////////////////////////////////////////////////////////////////////
+
+#define MCHECKERROR(STAT,MSG)       \
+	if ( MS::kSuccess != STAT ) {   \
+	cerr << MSG << endl;        \
+	return MS::kFailure;    \
+		}
+
+#define MCHECKERRORNORET(STAT,MSG)  \
+	if ( MS::kSuccess != STAT ) {   \
+	cerr << MSG << endl;        \
+		}
 
 // You MUST change this to a unique value!!!  The id is a 32bit value used
 // to identify this type of node in the binary file format.  
@@ -37,6 +60,7 @@
 MTypeId     Sampler::id( 0x80099 );
 
 // Attributes
+MObject		Sampler::cachePlacement;
 MObject		Sampler::nSamples;
 MObject     Sampler::inputMesh;        
 MObject		Sampler::useVertexCol;
@@ -45,6 +69,7 @@ MObject     Sampler::outputSamples;
 MObject		Sampler::outputPoints;
 MObject		Sampler::outputNormals;
 MObject		Sampler::worldToLocal;
+MObject		Sampler::samplerCache;
 
 Sampler::Sampler() {}
 Sampler::~Sampler() {}
@@ -67,6 +92,7 @@ MStatus Sampler::compute( const MPlug& plug, MDataBlock& data )
 	// MS::kUnknownParameter.
 	// 
 	if( plug == outputSamples ) {
+		MStatus stat;
 		// Get a handle to the input attribute that we will need for the
 		// computation.  If the value is being supplied via a connection 
 		// in the dependency graph, then this call will cause all upstream  
@@ -77,6 +103,25 @@ MStatus Sampler::compute( const MPlug& plug, MDataBlock& data )
 		int numSamples = data.inputValue( nSamples, &returnStatus ).asInt();
 		if ( returnStatus != MS::kSuccess ) return MStatus::kInvalidParameter;
 
+
+		MFnPluginData fnDataCreator;
+		MTypeId tmpid(SamplerCacheData::id);
+		SamplerCacheData* newData = NULL;
+		MDataHandle samplerCacheHandle;
+
+		samplerCacheHandle = data.outputValue(samplerCache);
+		newData = (SamplerCacheData*)samplerCacheHandle.asPluginData();
+
+		if (newData == NULL) {
+			// Create some output data
+			fnDataCreator.create(tmpid, &stat);
+			MCHECKERROR(stat, "compute : error creating SamplerCacheData")
+				newData = (SamplerCacheData*)fnDataCreator.data(&stat);
+			MCHECKERROR(stat, "compute : error gettin at proxy SamplerCacheData object")
+		}
+
+		const bool doCachePlacement = data.inputValue(cachePlacement, &returnStatus).asBool();
+		
 		MFnMesh mesh( inputMeshHandle.asMesh() );
 		{					
 			MDataHandle outputHandle = data.outputValue( Sampler::outputSamples );
@@ -107,7 +152,14 @@ MStatus Sampler::compute( const MPlug& plug, MDataBlock& data )
 				world2LocalHandle.set( matrixDataObject );	
 			}
 		
-			SampleMesh( mesh, numSamples, useVertexColor, colorSet, points, normals );
+			SampleMesh(mesh, numSamples, useVertexColor, colorSet, doCachePlacement, newData, points, normals);
+
+			// Assign the new data to the outputSurface handle
+
+			if (newData != samplerCacheHandle.asPluginData()) 
+			{
+				samplerCacheHandle.set(newData);
+			}
 
 			// Mark the destination plug as being clean.  This will prevent the
 			// dependency graph from repeating this calculation until an input 
@@ -122,112 +174,149 @@ MStatus Sampler::compute( const MPlug& plug, MDataBlock& data )
 	return MS::kSuccess;
 }
 
-struct triSampling_t {
-	int triangle;
-	float importance;
-};
-
-int ImportanceSort( const void* a, const void* b ) {
-	const float importanceA = static_cast< const triSampling_t* >(a)->importance;
-	const float importanceB = static_cast< const triSampling_t* >(b)->importance;
-	if ( importanceA < importanceB ) {
-		return 1;
-	} else if( importanceA > importanceB ) {
-		return -1;
-	} else {
-		return 0;
-	}
-}
-
-void Sampler::SampleMesh( MFnMesh& mesh, int numSamples, bool useVertexColor, const MString& colorSetName, MPointArray& points, MVectorArray& normals ) {
+void Sampler::SampleMesh(MFnMesh& mesh,
+	int numSamples,
+	bool useVertexColor,
+	const MString& colorSetName,
+	bool doCachePlacement,
+	SamplerCacheData* samplerCacheData,
+	MPointArray& points,
+	MVectorArray& normals) {
 	points.clear();
 	normals.clear();
-	
-	MColorArray vertexColors;	
-	if ( useVertexColor ) {
-		mesh.getVertexColors( vertexColors, &colorSetName );
+
+	MColorArray vertexColors;
+	if (useVertexColor) {
+		mesh.getVertexColors(vertexColors, &colorSetName);
 	}
 
 	MIntArray triangleCounts, triangleVertices;
-	mesh.getTriangles( triangleCounts, triangleVertices );
+	mesh.getTriangles(triangleCounts, triangleVertices);
 	unsigned int numTriangles = triangleVertices.length() / 3;
-	triSampling_t* triSampling = (triSampling_t*)malloc( numTriangles * sizeof( triSampling_t ) );
-	
+
 	MFloatVectorArray vNormals;
-	mesh.getVertexNormals( true, vNormals );
+	mesh.getVertexNormals(true, vNormals);
 
 	MPointArray verts;
-	mesh.getPoints( verts, MSpace::kWorld );
-	for( unsigned int i = 0; i < numTriangles; i ++ ) {
-		const int iA = triangleVertices[ 3 * i + 0 ];
-		const int iB = triangleVertices[ 3 * i + 1 ];
-		const int iC = triangleVertices[ 3 * i + 2 ];
-		const MVector AB = verts[ iB ] - verts[ iA ];
-		const MVector AC = verts[ iC ] - verts[ iA ];
-		const float area = 0.5f * (float)( AB ^ AC ).length();
+	mesh.getPoints(verts, MSpace::kWorld);
 
-		float importance = area;
-		if ( useVertexColor && vertexColors.length() > 0 ) {
-			MColor triCol = vertexColors[ iA ] + vertexColors[ iB ] + vertexColors[ iC ];
-			const float third = 1.0f / 3.0f;
-			triCol.r *= third;
-			triCol.g *= third;
-			triCol.b *= third;
-			const float lightness = std::min( 1.0f, std::max( 0.0f, ( triCol.r + triCol.g + triCol.b ) * third ) );
-			importance *= lightness;
+	std::vector< SamplerCacheData::triSampling_t >* pTriangleId = NULL;
+	std::vector< std::pair<float, float> >* pBarycentricCoord = NULL;
+	std::vector<float>* pRNG = NULL;
+
+	bool useSampleCache = doCachePlacement && 
+						  samplerCacheData->randomNumbers.size() == numSamples &&
+						  samplerCacheData->triangleIds.size() == numTriangles;
+	
+	if (useSampleCache)
+	{
+		pTriangleId = &samplerCacheData->triangleIds;
+		pBarycentricCoord = &samplerCacheData->triangleBarycentricCoords;
+		pRNG = &samplerCacheData->randomNumbers;
+	}
+	else
+	{
+		// recompute sample placement
+
+		pTriangleId = &samplerCacheData->triangleIds;
+		pBarycentricCoord = &samplerCacheData->triangleBarycentricCoords;
+		pRNG = &samplerCacheData->randomNumbers;
+	
+		(*pTriangleId).resize(numTriangles);
+		(*pBarycentricCoord).resize(numSamples);
+		memset(&(*pBarycentricCoord)[0], 0, numSamples * sizeof(std::pair<float, float>));
+
+		pRNG->resize(numSamples);
+		for (int i = 0; i < numSamples; ++i)
+		{
+			(*pRNG)[i] = (float)rand() / RAND_MAX;
 		}
 
-		triSampling[ i ].triangle = i;
-		triSampling[ i ].importance = importance;
-	}
+		for (unsigned int i = 0; i < numTriangles; i++) {
+			const int iA = triangleVertices[3 * i + 0];
+			const int iB = triangleVertices[3 * i + 1];
+			const int iC = triangleVertices[3 * i + 2];
+			const MVector AB = verts[iB] - verts[iA];
+			const MVector AC = verts[iC] - verts[iA];
+			const float area = 0.5f * (float)(AB ^ AC).length();
 
-	qsort( triSampling, numTriangles, sizeof(triSampling_t), ImportanceSort );
-	while( numTriangles > 0 && triSampling[ numTriangles - 1 ].importance < 1e-5f ) { numTriangles--; }
-	if ( numTriangles == 0 ) {
-		free( triSampling );
-		return;
-	}
+			float importance = area;
+			if (useVertexColor && vertexColors.length() > 0) {
+				MColor triCol = vertexColors[iA] + vertexColors[iB] + vertexColors[iC];
+				const float third = 1.0f / 3.0f;
+				triCol.r *= third;
+				triCol.g *= third;
+				triCol.b *= third;
+				const float lightness = __min(1.0f, __max(0, (triCol.r + triCol.g + triCol.b) * third));
+				importance *= lightness;
+			}
 
-	// cumulative probability distribution for faces
-	std::vector< int > triangleId;	
-	// normalize sorted areas against the smaller triangle (so smaller importance is 1)
-	const float commonDenominator = triSampling[ numTriangles - 1 ].importance;
-	for( unsigned int i = 0; i < numTriangles; i++ ) {
-		int area = (int)ceilf( triSampling[ i ].importance / commonDenominator );
-		for( int j = 0; j < area; j++ ) {
-			triangleId.push_back( triSampling[ i ].triangle );
+			(*pTriangleId)[i].triangle = i;
+			(*pTriangleId)[i].cdf = importance; // not a cdf yet
+		}
+
+		if (numTriangles == 0) {
+			if (samplerCacheData == NULL)
+			{
+				delete pTriangleId;
+				delete pBarycentricCoord;
+				delete pRNG;
+			}
+			return;
+		}
+
+		// cumulative probability distribution for faces
+		float cdf = 0.f;
+		for (size_t i = 0; i < numTriangles; ++i)
+		{
+			cdf +=  (*pTriangleId)[i].cdf;
+			(*pTriangleId)[i].cdf = cdf;
 		}
 	}
 
-	free( triSampling );
 
 	// Sample triangles
-
-	for( int i = 0; i < numSamples; i++ ) {
-		float r = (float)rand() / RAND_MAX;
-		int triId = triangleId[ (int)( r * ( triangleId.size() - 1 ) ) ];
+	const float maxTriangleCDF = (*pTriangleId)[(*pTriangleId).size()-1].cdf;
+	for (int i = 0; i < numSamples; i++) {
+		float r = (*pRNG)[i] * maxTriangleCDF; // non-normalised CDF
+		int triId = 0;
+		while(triId < (*pTriangleId).size() && (*pTriangleId)[triId].cdf < r )
+		{
+			triId++;
+		}
 
 		// sample using barycentric coordinates
 		float u, v;
-		do {
-			u = (float)rand() / RAND_MAX;
-			v = (float)rand() / RAND_MAX;
-		} while( u + v > 1 );
-
-		const int iA = triangleVertices[ 3 * triId + 0 ];
-		const int iB = triangleVertices[ 3 * triId + 1 ];
-		const int iC = triangleVertices[ 3 * triId + 2 ];
-		const MPoint A = verts[ iA ];
-		const MVector AB = verts[ iB ] - A;
-		const MVector AC = verts[ iC ] - A;
-
-		points.append( A + AB * u + AC * v );
-		MVector n = vNormals[ iA ] * (1.0f - u - v ) + vNormals[ iB ] * u + vNormals[ iC ] * v; 
-		n.normalize();
-		normals.append( n );
-	}
-
+		if (useSampleCache)
+		{
+			u = (*pBarycentricCoord)[i].first;
+			v = (*pBarycentricCoord)[i].second;
+		}
+		else
+		{
+			do {
+				u = (float)rand() / RAND_MAX;
+				v = (float)rand() / RAND_MAX;
+			} while (u + v > 1);
+			if (pBarycentricCoord != NULL)
+			{
+				(*pBarycentricCoord)[i] = std::pair<float, float>(u, v);
+			}
+		}
+		const int iA = triangleVertices[3 * triId + 0];
+		const int iB = triangleVertices[3 * triId + 1];
+		const int iC = triangleVertices[3 * triId + 2];
+		const MPoint A = verts[iA];
+		const MPoint B = verts[iB];
+		const MPoint C = verts[iC];
 	
+		const float w = 1.0f - u - v;
+		points.append(A * w + B * u + C * v);
+	
+		MVector n = vNormals[iA] * w + vNormals[iB] * u + vNormals[iC] * v;
+		n.normalize();
+		normals.append(n);
+	}
 }
 
 void* Sampler::creator()
@@ -262,6 +351,11 @@ MStatus Sampler::initialize()
 	MFnNumericAttribute nAttr;
 	MFnCompoundAttribute cAttr;
 	MStatus				stat;
+
+	cachePlacement = nAttr.create("cachePlacement", "cp", MFnNumericData::kBoolean, true, &stat);
+	if (!stat) return stat;
+	nAttr.setWritable(true);
+	nAttr.setStorable(true);
 
 	nSamples = nAttr.create( "sampleCount", "s", MFnNumericData::kInt, 1000, &stat );
 	if ( !stat ) return stat;
@@ -321,9 +415,17 @@ MStatus Sampler::initialize()
 	tAttr.setStorable( false );
 	tAttr.setHidden( true );
 
+	samplerCache = tAttr.create("samplerCache", "sc", SamplerCacheData::id);
+	tAttr.setWritable(false);
+	tAttr.setStorable(true);
+	tAttr.setHidden(true);
+
 	// Add the attributes we have created to the node
 	//
-	stat = addAttribute( nSamples );
+
+	stat = addAttribute(cachePlacement);
+	if (!stat) { stat.perror("addAttribute"); return stat; }
+	stat = addAttribute(nSamples);
 	if (!stat) { stat.perror("addAttribute"); return stat;}
 	stat = addAttribute( inputMesh );
 	if (!stat) { stat.perror("addAttribute"); return stat;}
@@ -335,6 +437,8 @@ MStatus Sampler::initialize()
 	if (!stat) { stat.perror("addAttribute"); return stat;}
 	stat = addAttribute( worldToLocal );
 	if (!stat) { stat.perror("addAttribute"); return stat;}
+	stat = addAttribute(samplerCache);
+	if (!stat) { stat.perror("addAttribute"); return stat; }
 
 	// Set up a dependency between the input and the output.  This will cause
 	// the output to be marked dirty when the input changes.  The output will

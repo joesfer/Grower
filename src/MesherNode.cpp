@@ -22,6 +22,7 @@
 #include <maya/MFnPluginData.h>
 #include <maya/MGlobal.h>
 #include <maya/MFnMeshData.h>
+#include <maya/MRampAttribute.h>
 #include <iostream>
 
 #include <stack>
@@ -54,6 +55,7 @@ const MString	Shape::typeName( "GrowerShape" );
 
 // Attributes
 MObject		Shape::tubeSections;
+MObject		Shape::thicknessScale;
 MObject		Shape::thickness;
 MObject		Shape::inputData;
 MObject		Shape::outMesh;
@@ -223,9 +225,9 @@ MStatus Shape::compute( const MPlug& plug, MDataBlock& data )
 			MPointArray vertexArray;
 			MIntArray polygonCounts, indices;
 			int tubeSections = data.inputValue( Shape::tubeSections ).asInt();
-			float baseThickness = data.inputValue( Shape::thickness ).asFloat();
 			float* thicknessArray = (float*)calloc( aoMeshData->nodes.size(), sizeof(float) );
-			size_t activeNodes = CalculateThickness( aoMeshData->nodes, baseThickness, thicknessArray );
+			float thicknessScale = data.inputValue(Shape::thicknessScale).asFloat();
+			size_t activeNodes = CalculateThickness(aoMeshData->nodes, thicknessScale, thicknessArray);
 			CreateMesh( aoMeshData, activeNodes, tubeSections, thicknessArray, vertexArray, indices, polygonCounts );
 			free( thicknessArray );
 			const int numQuads = indices.length() / 4;
@@ -266,7 +268,7 @@ void Shape::CreateMesh( const GrowerData* data, const size_t activeNodes, const 
 				assert( trimmedNodes[ parent ] != TS_UNVISITED );
 			}			
 		}
-		trimmedNodes[ i ] = trimmed ? TS_TRIMMED : TS_ACTIVE;
+		trimmedNodes[ i ] = trimmed ? (short)TS_TRIMMED : (short)TS_ACTIVE;
 		if ( !trimmed ) {
 			remaining += std::max( (size_t)1, data->nodes[ i ].children.size() );
 		}
@@ -362,9 +364,9 @@ void Shape::CreateMesh( const GrowerData* data, const size_t activeNodes, const 
 			assert( vertexOffsetA + j + ( j + 1 ) % tubeSections < tubeSections * (int)remaining );
 
 			indices[ offset++ ] = vertexOffsetA + j;
-			indices[ offset++ ] = vertexOffsetB + j ;
-			indices[ offset++ ] = vertexOffsetB + ( j + 1 ) % tubeSections;
 			indices[ offset++ ] = vertexOffsetA + ( j + 1 ) % tubeSections;
+			indices[offset++] = vertexOffsetB + (j + 1) % tubeSections;
+			indices[offset++] = vertexOffsetB + j;
 		}
 	}
 	assert( offset == 2 * numTris );
@@ -379,14 +381,17 @@ void Shape::CreateMesh( const GrowerData* data, const size_t activeNodes, const 
 
 }
 
-size_t Shape::CalculateThickness( std::vector< growerNode_t >& nodes, const float baseThickness, float* thicknessArray ) {
+size_t Shape::CalculateThickness(std::vector< growerNode_t >& nodes, float thicknessScale, float* thicknessArray) {
 
 	// calculate branch thickness. This is a recursive process where 
 	// thickness( node_i ) = function( thickness( child0(node_i) ), thickness( child0(node_i) ), ... )
 	// but let's not perform recursive function calls as we can easily blow up the stack
 
 	size_t activeNodes = 0;
+	const float baseThickness = 1.f;
 
+	MRampAttribute thicknessRemapping(thisMObject(), thickness);
+	
 	std::vector< size_t > terminators;
 	std::stack< size_t > recursion;
 	recursion.push( 0 );
@@ -449,7 +454,7 @@ size_t Shape::CalculateThickness( std::vector< growerNode_t >& nodes, const floa
 
 	// track down the bifurcations, for each single-child node path, interpolate
 	// the nodes thickness to smooth out appearance
-
+	
 	for( size_t i = 0; i < nodes.size(); i++ ) {
 		growerNode_t& node = nodes[ i ];
 		if ( node.children.size() > 0 ) {
@@ -479,6 +484,25 @@ size_t Shape::CalculateThickness( std::vector< growerNode_t >& nodes, const floa
 				}
 			}
 		}
+	}
+	
+	float maxThickness = 0;
+	float minThickness = FLT_MAX;
+	for (size_t i = 0; i < nodes.size(); i++) {
+		const float thickness = thicknessArray[i];
+		maxThickness = std::max(maxThickness, thickness);
+		minThickness = std::min(minThickness, thickness);
+	}
+	minThickness = std::min(minThickness, maxThickness);
+	maxThickness = std::max(maxThickness, minThickness + 1e-8f);
+
+	for (size_t i = 0; i < nodes.size(); i++) {
+		float normalizedThickness = (thicknessArray[i] - minThickness) / (1e-8f + maxThickness - minThickness);
+		float inputThickness = normalizedThickness * thicknessScale;
+		float remappedThickness;
+		// the 1.0f - X is because it's more intuitive to see the curve from thick to thin, instead of the natural order thin (0) to thick (1)
+		thicknessRemapping.getValueAtPosition(std::max(0.f, std::min(1.f, 1.0f - inputThickness)), remappedThickness);
+		thicknessArray[i] = remappedThickness;
 	}
 
 	return activeNodes;
@@ -515,20 +539,22 @@ MStatus Shape::initialize()
 	MFnTypedAttribute	typedFn;	
 	MStatus				stat;
 
-	tubeSections = nFn.create( "tubeSections", "ts", MFnNumericData::kInt, 6 );
+	tubeSections = nFn.create( "tubeSections", "ts", MFnNumericData::kInt, 8 );
 	nFn.setWritable( true );
 	nFn.setReadable( true );
 	nFn.setStorable( true );
 	nFn.setMin( 3 );
 	nFn.setSoftMax( 24 );
 
-	thickness = nFn.create( "thickness", "th", MFnNumericData::kFloat, 0.05f );
-	nFn.setMin( 0 );
-	nFn.setSoftMin( 0.0001f );
-	nFn.setSoftMax( 0.01f );
-	nFn.setStorable( true );
-	nFn.setWritable( true );
-	
+	thicknessScale = nFn.create("thicknessScale", "ths", MFnNumericData::kFloat, 1.0f);
+	nFn.setWritable(true);
+	nFn.setReadable(true);
+	nFn.setStorable(true);
+	nFn.setMin(1e-4f);
+	nFn.setSoftMax(2.f);
+
+	thickness = MRampAttribute::createCurveRamp("thickness", "th");
+
 	inputData = typedFn.create( "input", "in", GrowerData::id );
 	typedFn.setWritable( true );
 	typedFn.setReadable( true );
@@ -543,6 +569,8 @@ MStatus Shape::initialize()
 	//
 	stat = addAttribute( tubeSections );
 	if (!stat) { stat.perror("addAttribute"); return stat;}
+	stat = addAttribute(thicknessScale);
+	if (!stat) { stat.perror("addAttribute"); return stat; }
 	stat = addAttribute( thickness );
 	if (!stat) { stat.perror("addAttribute"); return stat;}
 	stat = addAttribute( inputData );
@@ -551,7 +579,8 @@ MStatus Shape::initialize()
 	if (!stat) { stat.perror("addAttribute"); return stat;}
 
 	attributeAffects( tubeSections, outMesh );
-	attributeAffects( thickness,	outMesh );
+	attributeAffects( thicknessScale, outMesh );
+	attributeAffects( thickness, outMesh );
 	attributeAffects( inputData,	outMesh );
 
 	return MS::kSuccess;

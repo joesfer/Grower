@@ -56,6 +56,7 @@ public:
 	static	MObject		growDist;
 	static	MObject		maxNeighbors;
 	static	MObject		aoMeshData;		// GrowerData
+	static	MObject		cacheSolution;	// toggle to cache solution, used to stick grower to moving surfaces
 
 	// The typeid is a unique 32bit identifier that describes this node.
 	// It is used to save and retrieve nodes of this type from the binary
@@ -64,12 +65,16 @@ public:
 	static const MTypeId	id;
 	static const MString	typeName;
 
-private:
-#if GROWER_DISPLAY_DEBUG_INFO
-	void Grow( const MPointArray& points, const MVectorArray& normals, const MPoint& sourcePos, const float searchRadius, const float killRadius, const int maxNeighbors, const float nodeGrowDist, std::vector< growerNode_t >& nodes, std::vector< attractionPointVis_t >& attractors );
-#else
-	void Grow( const MPointArray& points, const MVectorArray& normals, const MPoint& sourcePos, const float searchRadius, const float killRadius, const int maxNeighbors, const float nodeGrowDist, std::vector< growerNode_t >& nodes );
-#endif
+private: 
+	void Grow( const MPointArray& points, 
+			   const MVectorArray& normals, 
+			   const MPoint& sourcePos, 
+			   const float searchRadius, 
+			   const float killRadius, 
+			   const int maxNeighbors, 
+			   const float nodeGrowDist, 
+			   bool useCachedSolution,
+			   GrowerData* inOutData );
 };
 
 #endif

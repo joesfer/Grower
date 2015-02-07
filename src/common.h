@@ -5,4 +5,4 @@
 	================================================================================
 */
 
-#define GROWER_DISPLAY_DEBUG_INFO	0
+#define GROWER_DISPLAY_DEBUG_INFO	1
