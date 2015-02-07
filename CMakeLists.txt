@@ -45,10 +45,10 @@ else()
 endif()
 
 set( CORELIB_INCLUDE_DIR  ${CMAKE_CURRENT_SOURCE_DIR}/CoreLib/include CACHE STRING "path to coreLib include folder" )
-set( CORELIB_LIBRARY_DIR  ${CMAKE_CURRENT_SOURCE_DIR}/CoreLib/lib/${CMAKE_BUILD_TYPE} CACHE STRING "path to coreLib libray folder" )
+set( CORELIB_LIBRARY_DIR  ${CMAKE_CURRENT_SOURCE_DIR}/CoreLib/lib CACHE STRING "path to coreLib libray folder" )
 
 set( RENDERLIB_INCLUDE_DIR  ${CMAKE_CURRENT_SOURCE_DIR}/RenderLib/include CACHE STRING "path to renderlib include folder" )
-set( RENDERLIB_LIBRARY_DIR  ${CMAKE_CURRENT_SOURCE_DIR}/RenderLib/lib/${CMAKE_BUILD_TYPE} CACHE STRING "path to renderlib libray folder" )
+set( RENDERLIB_LIBRARY_DIR  ${CMAKE_CURRENT_SOURCE_DIR}/RenderLib/lib CACHE STRING "path to renderlib libray folder" )
 
 set ( LOCAL_WARNING_FLAGS /W3 )
 set ( LOCAL_RTTI_FLAGS /GR )
