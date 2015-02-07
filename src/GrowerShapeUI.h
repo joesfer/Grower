@@ -41,12 +41,6 @@ public:
 	//
 	virtual void	draw( const MDrawRequest & request, M3dView & view ) const;
 
-	// Main draw routine for UV editor. This is called by maya when the 
-	// shape is selected and the UV texture window is visible. 
-	// 
-	virtual void	drawUV( M3dView &, const MTextureEditorDrawInfo & ) const {}
-	virtual bool	canDrawUV() const { return false; }
-
 	// Main selection routine
 	//
 	virtual bool	select( MSelectInfo &selectInfo,

@@ -247,7 +247,7 @@ void Sampler::SampleMesh(MFnMesh& mesh,
 				triCol.r *= third;
 				triCol.g *= third;
 				triCol.b *= third;
-				const float lightness = __min(1.0f, __max(0, (triCol.r + triCol.g + triCol.b) * third));
+				const float lightness = std::min(1.0f, std::max(0.f, (triCol.r + triCol.g + triCol.b) * third));
 				importance *= lightness;
 			}
 

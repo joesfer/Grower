@@ -4,7 +4,6 @@
 	This software is released under the LGPL-3.0 license: http://www.opensource.org/licenses/lgpl-3.0.html	
 	================================================================================
 */
-
 #ifndef GrowerData_h__
 #define GrowerData_h__
 
@@ -87,10 +86,10 @@ public:
 	std::vector< std::vector<RenderLib::DataStructures::SampleIndex_t> > m_cachedBannedAliveNodes;
 	std::vector< std::vector<bool> >									 m_cachedActiveAttractors;
 
-	float m_cachedSearchRadius = -1;
-	float m_cachedKillRadius = -1;
-	int	  m_cachedNumNeighbours = -1;
-	float m_cachedNodeGrowDist = -1;
+	float m_cachedSearchRadius;
+	float m_cachedKillRadius;
+	int	  m_cachedNumNeighbours;
+	float m_cachedNodeGrowDist;
 
 };
 #endif // GrowerData_h__

@@ -4,10 +4,8 @@
 	This software is released under the LGPL-3.0 license: http://www.opensource.org/licenses/lgpl-3.0.html	
 	================================================================================
 */
-
 #ifndef MesherNode_h__
 #define MesherNode_h__
-
 
 #include <maya/MPxNode.h>
 #include <maya/MTypeId.h> 
@@ -22,7 +20,7 @@ struct attractionPointVis_t;
 
 /////////////////////////////////////////////////////////////////////
 //
-// class Shape
+// class GrowerShape
 //
 //	Implements the custom shape generation and produces a MFnMesh
 //	for Maya to handle. A different class, GrowerUI will be in charge 
@@ -30,15 +28,14 @@ struct attractionPointVis_t;
 // 
 /////////////////////////////////////////////////////////////////////
 
-class Shape : public MPxSurfaceShape
+class GrowerShape : public MPxSurfaceShape
 {
 public:
-	Shape();
-	virtual					~Shape(); 
-
+						GrowerShape() {}
+	virtual				~GrowerShape() {}
+	
 	// overrides
 
-	virtual void			postConstructor();
 	virtual MStatus			compute( const MPlug& plug, MDataBlock& data );
 
 	virtual bool			isBounded() const;

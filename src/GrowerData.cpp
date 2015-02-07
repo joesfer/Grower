@@ -4,7 +4,6 @@
 	This software is released under the LGPL-3.0 license: http://www.opensource.org/licenses/lgpl-3.0.html	
 	================================================================================
 */
-
 #include "GrowerData.h"
 
 const MTypeId GrowerData::id( 0x80777 );
@@ -15,6 +14,10 @@ const MString GrowerData::typeName( "GrowerData" );
 //////////////////////////////////////////////////////////////////////////
 
 GrowerData::GrowerData() {
+	m_cachedSearchRadius = -1;
+	m_cachedKillRadius = -1;
+	m_cachedNumNeighbours = -1;
+	m_cachedNodeGrowDist = -1;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -29,7 +32,7 @@ GrowerData::~GrowerData() {
 //////////////////////////////////////////////////////////////////////////
 
 void GrowerData::copy ( const MPxData& other ) {
-	if ( &other != this ) {
+	if ( other.typeId() == typeId() ) {
 		const GrowerData& _other = (const GrowerData &)other;
 		bounds      = _other.bounds;
 		nodes		= _other.nodes;

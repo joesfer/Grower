@@ -4,7 +4,6 @@
 	This software is released under the LGPL-3.0 license: http://www.opensource.org/licenses/lgpl-3.0.html	
 	================================================================================
 */
-
 #include "GrowerNode.h"
 #include "GrowerData.h"
 #include "NearestNeighbors.h"
@@ -151,7 +150,7 @@ MStatus Grower::compute( const MPlug& plug, MDataBlock& data )
 		}
 
 		// calculate the scene-sized distance thresholds
-		float maxExtents = (float)__max( srcBounds.width(), __max( srcBounds.height(), srcBounds.depth() ) );
+		float maxExtents = (float)std::max( srcBounds.width(), std::max( srcBounds.height(), srcBounds.depth() ) );
 		searchRadius = searchRadius * maxExtents;
 		killRadius	 = killRadius	* maxExtents;
 		nodeGrowDist = nodeGrowDist * maxExtents;

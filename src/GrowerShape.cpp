@@ -4,7 +4,6 @@
 	This software is released under the LGPL-3.0 license: http://www.opensource.org/licenses/lgpl-3.0.html	
 	================================================================================
 */
-
 #include "MesherNode.h"
 #include "GrowerData.h"
 #include "NearestNeighbors.h"
@@ -50,85 +49,52 @@
 // You MUST change this to a unique value!!!  The typeId is a 32bit value used
 // to identify this type of node in the binary file format.  
 //
-const MTypeId   Shape::id( 0x80098 );
-const MString	Shape::typeName( "GrowerShape" );
+const MTypeId   GrowerShape::id( 0x80098 );
+const MString	GrowerShape::typeName( "GrowerShape" );
 
 // Attributes
-MObject		Shape::tubeSections;
-MObject		Shape::thicknessScale;
-MObject		Shape::thickness;
-MObject		Shape::inputData;
-MObject		Shape::outMesh;
+MObject		GrowerShape::tubeSections;
+MObject		GrowerShape::thicknessScale;
+MObject		GrowerShape::thickness;
+MObject		GrowerShape::inputData;
+MObject		GrowerShape::outMesh;
 
-//////////////////////////////////////////////////////////////////////////
-// Shape::Shape
-//////////////////////////////////////////////////////////////////////////
-
-Shape::Shape() {
-}
-
-//////////////////////////////////////////////////////////////////////////
-// Shape::~Shape
-//////////////////////////////////////////////////////////////////////////
-
-Shape::~Shape() {
-}
-
-//////////////////////////////////////////////////////////////////////////
-// Shape::geometryData (override)
+/////////////////////////////////////////////////////////////////////////
+// GrowerShape::geometryData (override)
 //
 // Returns the data object for the surface. This gets
 // called internally for grouping (set) information.
 //////////////////////////////////////////////////////////////////////////
 
-MObject Shape::geometryData() const {
-	Shape* nonConstThis = const_cast<Shape*>(this);
+MObject GrowerShape::geometryData() const {
+	return MObject();
+	GrowerShape* nonConstThis = const_cast<GrowerShape*>(this);
 	MDataBlock datablock = nonConstThis->forceCache();
 	MDataHandle handle = datablock.inputValue( outMesh );
 	return handle.data();
 }
 
 //////////////////////////////////////////////////////////////////////////
-// Shape::localShapeOutAttr (override)
+// GrowerShape::localShapeOutAttr (override)
 //////////////////////////////////////////////////////////////////////////
 
-MObject Shape::localShapeOutAttr() const {
+MObject GrowerShape::localShapeOutAttr() const {
 	return outMesh;
 }
 
 //////////////////////////////////////////////////////////////////////////
-// Shape::postConstructor (override)
-//////////////////////////////////////////////////////////////////////////
-
-void Shape::postConstructor() { 
-
-	//    When instances of this node are created internally, the MObject associated
-	//    with the instance is not created until after the constructor of this class
-	//    is called. This means that no member functions of MPxSurfaceShape can
-	//    be called in the constructor.
-	//    The postConstructor solves this problem. Maya will call this function
-	//    after the internal object has been created.
-	//    As a general rule do all of your initialization in the postConstructor.
-	//
-
-	// This call allows the Shape to have shading groups assigned
-	//
-	setRenderable( true );
-	setMPSafe( true );
-}
-//////////////////////////////////////////////////////////////////////////
-// Shape::isBounded (override)
+// GrowerShape::isBounded (override)
 ////////////////////////////////////////////////////////////////////////////
 
-bool Shape::isBounded() const {
+bool GrowerShape::isBounded() const {
 	return MeshGeometry() != NULL && MeshGeometry()->hasGeometry(); //otherwise we won't have valid bounds
 }
 
 //////////////////////////////////////////////////////////////////////////
-// Shape::boundingBox (override)
+// GrowerShape::boundingBox (override)
 ////////////////////////////////////////////////////////////////////////////
 
-MBoundingBox Shape::boundingBox() const {
+MBoundingBox GrowerShape::boundingBox() const {
 	if ( MeshGeometry() != NULL ) {
 		return MeshGeometry()->bounds;
 	} else {
@@ -139,14 +105,14 @@ MBoundingBox Shape::boundingBox() const {
 }
 
 //////////////////////////////////////////////////////////////////////////
-// Shape::MeshDataRef (override)
+// GrowerShape::MeshDataRef (override)
 //
 //	Get a reference to the mesh data (inputData)
 //	from the datablock. If dirty then an evaluation is
 //	triggered.
 ////////////////////////////////////////////////////////////////////////////
 
-MObject Shape::MeshDataRef() {
+MObject GrowerShape::MeshDataRef() {
 	// Get the datablock for this node
 	//
 	MDataBlock datablock = forceCache();
@@ -161,12 +127,12 @@ MObject Shape::MeshDataRef() {
 
 
 //////////////////////////////////////////////////////////////////////////
-// Shape::MeshGeometry
+// GrowerShape::MeshGeometry
 //
-// Returns a pointer to the MeshGeom underlying the Shape.
+// Returns a pointer to the MeshGeom underlying the GrowerShape.
 ////////////////////////////////////////////////////////////////////////////
 
-GrowerData* Shape::MeshGeometry() {
+GrowerData* GrowerShape::MeshGeometry() {
 	MStatus stat;
 
 	MObject tmpObj = MeshDataRef();
@@ -177,10 +143,10 @@ GrowerData* Shape::MeshGeometry() {
 	return data;
 }
 
-const GrowerData* Shape::MeshGeometry() const {
+const GrowerData* GrowerShape::MeshGeometry() const {
 	MStatus stat;
 
-	MObject tmpObj = const_cast<Shape*>(this)->MeshDataRef();
+	MObject tmpObj = const_cast<GrowerShape*>(this)->MeshDataRef();
 	MFnPluginData fnData( tmpObj );
 	GrowerData * data = (GrowerData*)fnData.data( &stat );
 	MCHECKERRORNORET( stat, "MeshGeometry : Failed to get MeshData");
@@ -188,7 +154,7 @@ const GrowerData* Shape::MeshGeometry() const {
 	return data;
 }
 
-MStatus Shape::compute( const MPlug& plug, MDataBlock& data )
+MStatus GrowerShape::compute( const MPlug& plug, MDataBlock& data )
 //
 //	Description:
 //		This method computes the value of the given output plug based
@@ -224,9 +190,9 @@ MStatus Shape::compute( const MPlug& plug, MDataBlock& data )
 		{
 			MPointArray vertexArray;
 			MIntArray polygonCounts, indices;
-			int tubeSections = data.inputValue( Shape::tubeSections ).asInt();
+			int tubeSections = data.inputValue( GrowerShape::tubeSections ).asInt();
 			float* thicknessArray = (float*)calloc( aoMeshData->nodes.size(), sizeof(float) );
-			float thicknessScale = data.inputValue(Shape::thicknessScale).asFloat();
+			float thicknessScale = data.inputValue(GrowerShape::thicknessScale).asFloat();
 			size_t activeNodes = CalculateThickness(aoMeshData->nodes, thicknessScale, thicknessArray);
 			CreateMesh( aoMeshData, activeNodes, tubeSections, thicknessArray, vertexArray, indices, polygonCounts );
 			free( thicknessArray );
@@ -241,7 +207,7 @@ MStatus Shape::compute( const MPlug& plug, MDataBlock& data )
 	return MS::kUnknownParameter;
 }
 
-void Shape::CreateMesh( const GrowerData* data, const size_t activeNodes, const int tubeSections, const float* thickness, MPointArray& vertices, MIntArray& indices, MIntArray& polygonCounts ) const {
+void GrowerShape::CreateMesh( const GrowerData* data, const size_t activeNodes, const int tubeSections, const float* thickness, MPointArray& vertices, MIntArray& indices, MIntArray& polygonCounts ) const {
 
 	if ( activeNodes == 0 || tubeSections == 0 ) {
 		return;
@@ -381,8 +347,8 @@ void Shape::CreateMesh( const GrowerData* data, const size_t activeNodes, const 
 
 }
 
-size_t Shape::CalculateThickness(std::vector< growerNode_t >& nodes, float thicknessScale, float* thicknessArray) {
-
+size_t GrowerShape::CalculateThickness(std::vector< growerNode_t >& nodes, float thicknessScale, float* thicknessArray) {
+	
 	// calculate branch thickness. This is a recursive process where 
 	// thickness( node_i ) = function( thickness( child0(node_i) ), thickness( child0(node_i) ), ... )
 	// but let's not perform recursive function calls as we can easily blow up the stack
@@ -507,7 +473,8 @@ size_t Shape::CalculateThickness(std::vector< growerNode_t >& nodes, float thick
 
 	return activeNodes;
 }
-void* Shape::creator()
+
+void* GrowerShape::creator()
 //
 //	Description:
 //		this method exists to give Maya a way to create new objects
@@ -517,10 +484,10 @@ void* Shape::creator()
 //		a new object of this type
 //
 {
-	return new Shape();
+	return new GrowerShape();
 }
 
-MStatus Shape::initialize()
+MStatus GrowerShape::initialize()
 //
 //	Description:
 //		This method is called to create and initialize all of the attributes
@@ -534,7 +501,7 @@ MStatus Shape::initialize()
 {
 	// This sample creates a single input float attribute and a single
 	// output float attribute.
-	//
+	
 	MFnNumericAttribute	nFn;
 	MFnTypedAttribute	typedFn;	
 	MStatus				stat;
@@ -586,4 +553,3 @@ MStatus Shape::initialize()
 	return MS::kSuccess;
 
 }
-

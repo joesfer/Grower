@@ -33,52 +33,66 @@ MStatus initializePlugin( MObject obj )
 
 	status = plugin.registerData(SamplerCacheData::typeName, SamplerCacheData::id, SamplerCacheData::creator, MPxData::kGeometryData);
 	if (!status) {
-		status.perror("registerData");
+		status.perror("registerData SamplerCacheData");
 		return status;
 	}
 
 	status = plugin.registerNode( "Sampler", Sampler::id, Sampler::creator, Sampler::initialize );
 	if (!status) {
-		status.perror("registerNode");
+		status.perror("registerNode Sampler");
 		return status;
 	}
 
-	status = plugin.registerData( GrowerData::typeName, GrowerData::id, GrowerData::creator, MPxData::kGeometryData );
+	status = plugin.registerData( GrowerData::typeName, 
+								  GrowerData::id, 
+								  GrowerData::creator, 
+								  MPxData::kGeometryData );
 	if (!status) {
-		status.perror("registerData");
+		status.perror("registerData GrowerData");
 		return status;
 	}
 	
 	status = plugin.registerNode( "Grower", Grower::id, Grower::creator, Grower::initialize );
 	if (!status) {
-		status.perror("registerNode");
+		status.perror("registerNode Grower");
 		return status;
 	}
 
-	status = plugin.registerNode( "Trimmer", Trimmer::id, Trimmer::creator, Trimmer::initialize );
+	status = plugin.registerNode( "Trimmer", 
+								  Trimmer::id, 
+								  Trimmer::creator, 
+								  Trimmer::initialize );
 	if (!status) {
-		status.perror("registerNode");
+		status.perror("registerNode Trimmer");
 		return status;
 	}
 
-	status = plugin.registerShape( Shape::typeName, Shape::id, Shape::creator,
-		Shape::initialize, MesherUI::creator );
+	status = plugin.registerShape(GrowerShape::typeName, 
+								  GrowerShape::id, 
+								  GrowerShape::creator,
+								  GrowerShape::initialize, 
+								  MesherUI::creator );
 	if (!status) {
-		status.perror("registerNode");
+		status.perror("registerShape GrowerShape");
 		return status;
 	}
 
-	status = plugin.registerData(SamplePreviewData::typeName, SamplePreviewData::id, SamplePreviewData::creator, MPxData::kGeometryData);
+	status = plugin.registerData(SamplePreviewData::typeName, 
+								 SamplePreviewData::id, 
+								 SamplePreviewData::creator, 
+								 MPxData::kGeometryData);
 	if (!status) {
-		status.perror("registerData");
+		status.perror("registerData SamplePreviewData");
 		return status;
 	}
 
-	status = plugin.registerShape(SampleShape::typeName, SampleShape::id,
-		SampleShape::creator, SampleShape::initialize,
-		SampleShapeUI::creator);
+	status = plugin.registerShape(SampleShape::typeName, 
+								  SampleShape::id,
+								  SampleShape::creator, 
+								  SampleShape::initialize,
+								  SampleShapeUI::creator);
 	if (!status) {
-		status.perror("registerShape");
+		status.perror("registerShape SampleShape");
 		return status;
 	}
 	
@@ -128,7 +142,7 @@ MStatus uninitializePlugin( MObject obj)
 		return status;
 	}
 
-	status = plugin.deregisterNode( Shape::id );
+	status = plugin.deregisterNode( GrowerShape::id );
 	if (!status) {
 		status.perror("deregisterNode");
 		return status;

@@ -4,6 +4,7 @@
 	This software is released under the LGPL-3.0 license: http://www.opensource.org/licenses/lgpl-3.0.html	
 	================================================================================
 */
+#include <GL/gl.h>
 
 #include "MesherUI.h"
 #include "MesherNode.h"
@@ -79,7 +80,7 @@ void MesherUI::getDrawRequests( const MDrawInfo & info,
   // Get the data necessary to draw the shape
   //
   MDrawData data;
-  Shape* meshNode =  (Shape*)surfaceShape();
+  GrowerShape* meshNode =  (GrowerShape*)surfaceShape();
   GrowerData * geom = meshNode->MeshGeometry();
   if ( NULL == geom ) {
 	  std::cerr << "NO DrawRequest for Grower" << std::endl;
@@ -237,41 +238,6 @@ void MesherUI::draw( const MDrawRequest & request, M3dView & view ) const{
 bool MesherUI::select( MSelectInfo &/*selectInfo*/, MSelectionList &/*selectionList*/,
 						MPointArray &/*worldSpaceSelectPts*/ ) const {
 return true;
-						// bool selected = false;
-						// bool componentSelected = false;
-						// bool hilited = false;
-
-						// hilited = (selectInfo.displayStatus() == M3dView::kHilite);
-						// if ( hilited ) {
-						//	 componentSelected = SelectVertices( selectInfo, selectionList,
-						//		 worldSpaceSelectPts );
-						//	 selected = selected || componentSelected;
-						// }
-
-						// if ( !selected ) {
-
-						//	 Shape* meshNode = (Shape*)surfaceShape();
-
-						//	 // NOTE: If the geometry has an intersect routine it should
-						//	 // be called here with the selection ray to determine if the
-						//	 // the object was selected.
-
-						//	 selected = true;
-						//	 MSelectionMask priorityMask( MSelectionMask::kSelectMeshes );
-						//	 MSelectionList item;
-						//	 item.add( selectInfo.selectPath() );
-						//	 MPoint xformedPt;
-						//	 if ( selectInfo.singleSelection() ) {
-						//		 MPoint center = meshNode->boundingBox().center();
-						//		 xformedPt = center;
-						//		 xformedPt *= selectInfo.selectPath().inclusiveMatrix();
-						//	 }
-
-						//	 selectInfo.addSelection( item, xformedPt, selectionList,
-						//		 worldSpaceSelectPts, priorityMask, false );
-						// }
-
-						// return selected;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -425,102 +391,5 @@ bool MesherUI::SelectVertices( MSelectInfo &/*selectInfo*/,
 							 MSelectionList &/*selectionList*/,
 							 MPointArray &/*worldSpaceSelectPts*/ ) const {
 	return false;
-								// bool selected = false;
-								// M3dView view = selectInfo.view();
-
-								// MPoint 		xformedPoint;
-								// MPoint 		selectionPoint;
-								// double		z,previousZ = 0.0;
-								// int			closestPointVertexIndex = -1;
-
-								// const MDagPath & path = selectInfo.multiPath();
-
-								// // Create a component that will store the selected vertices
-								// //
-								// MFnSingleIndexedComponent fnComponent;
-								// MObject surfaceComponent = fnComponent.create( MFn::kMeshVertComponent );
-								// size_t vertexIndex;
-
-								// // if the user did a single mouse click and we find > 1 selection
-								// // we will use the alignmentMatrix to find out which is the closest
-								// //
-								// MMatrix	alignmentMatrix;
-								// MPoint singlePoint; 
-								// bool singleSelection = selectInfo.singleSelection();
-								// if( singleSelection ) {
-								//	 alignmentMatrix = selectInfo.getAlignmentMatrix();
-								// }
-
-								// // Get the geometry information
-								// //
-								// Shape* meshNode = (Shape*)surfaceShape();
-								// MeshGeom * geom = meshNode->MeshGeometry();
-
-								// // Loop through all vertices of the mesh and
-								// // see if they lie withing the selection area
-								// //
-								// size_t numVertices = geom->vertices.size();
-								// for ( vertexIndex=0; vertexIndex<numVertices; vertexIndex++ )
-								// {
-								//	 MPoint currentPoint = geom->vertices[ vertexIndex ].pos;
-
-								//	 // Sets OpenGL's render mode to select and stores
-								//	 // selected items in a pick buffer
-								//	 //
-								//	 view.beginSelect();
-
-								//	 glBegin( GL_POINTS );
-								//	 glVertex3f( (float)currentPoint[0], 
-								//		 (float)currentPoint[1], 
-								//		 (float)currentPoint[2] );
-								//	 glEnd();
-
-								//	 if ( view.endSelect() > 0 )	// Hit count > 0
-								//	 {
-								//		 selected = true;
-
-								//		 if ( singleSelection ) {
-								//			 xformedPoint = currentPoint;
-								//			 xformedPoint.homogenize();
-								//			 xformedPoint*= alignmentMatrix;
-								//			 z = xformedPoint.z;
-								//			 if ( closestPointVertexIndex < 0 || z > previousZ ) {
-								//				 closestPointVertexIndex = (int)vertexIndex;
-								//				 singlePoint = currentPoint;
-								//				 previousZ = z;
-								//			 }
-								//		 } else {
-								//			 // multiple selection, store all elements
-								//			 //
-								//			 fnComponent.addElement( (int)vertexIndex );
-								//		 }
-								//	 }
-								// }
-
-								// // If single selection, insert the closest point into the array
-								// //
-								// if ( selected && selectInfo.singleSelection() ) {
-								//	 fnComponent.addElement(closestPointVertexIndex);
-
-								//	 // need to get world space position for this vertex
-								//	 //
-								//	 selectionPoint = singlePoint;
-								//	 selectionPoint *= path.inclusiveMatrix();
-								// }
-
-								// // Add the selected component to the selection list
-								// //
-								// if ( selected ) {
-								//	 MSelectionList selectionItem;
-								//	 selectionItem.add( path, surfaceComponent );
-
-								//	 MSelectionMask mask( MSelectionMask::kSelectComponentsMask );
-								//	 selectInfo.addSelection(
-								//		 selectionItem, selectionPoint,
-								//		 selectionList, worldSpaceSelectPts,
-								//		 mask, true );
-								// }
-
-								// return selected;
 }
 
