@@ -6,8 +6,8 @@
 */
 #include <GL/gl.h>
 
-#include "MesherUI.h"
-#include "MesherNode.h"
+#include "GrowerShapeUI.h"
+#include "GrowerShape.h"
 #include "GrowerData.h"
 
 #include <maya/MObjectArray.h>
@@ -46,11 +46,11 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-MesherUI::MesherUI() {}
-MesherUI::~MesherUI() {}
+GrowerShapeUI::GrowerShapeUI() {}
+GrowerShapeUI::~GrowerShapeUI() {}
 
-void* MesherUI::creator() {
-	return new MesherUI();
+void* GrowerShapeUI::creator() {
+	return new GrowerShapeUI();
 }
 
 
@@ -61,7 +61,7 @@ void* MesherUI::creator() {
 ///////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////
-// MesherUI::getDrawRequests (override)
+// GrowerShapeUI::getDrawRequests (override)
 //
 // Description:
 //
@@ -74,7 +74,7 @@ void* MesherUI::creator() {
 //     queue                - queue of draw requests to add to
 //
 //////////////////////////////////////////////////////////////////////////
-void MesherUI::getDrawRequests( const MDrawInfo & info,
+void GrowerShapeUI::getDrawRequests( const MDrawInfo & info,
 								bool /*objectAndActiveOnly*/,
 								MDrawRequestQueue & queue ) {
   // Get the data necessary to draw the shape
@@ -192,7 +192,7 @@ void MesherUI::getDrawRequests( const MDrawInfo & info,
 
 
 //////////////////////////////////////////////////////////////////////////
-// MesherUI::draw (override)
+// GrowerShapeUI::draw (override)
 //
 // Description:
 //
@@ -204,7 +204,7 @@ void MesherUI::getDrawRequests( const MDrawInfo & info,
 //     view    - view to draw into
 //
 //////////////////////////////////////////////////////////////////////////
-void MesherUI::draw( const MDrawRequest & request, M3dView & view ) const{ 
+void GrowerShapeUI::draw( const MDrawRequest & request, M3dView & view ) const{ 
 	// Get the token from the draw request.
 	// The token specifies what needs to be drawn.
 	//
@@ -222,7 +222,7 @@ void MesherUI::draw( const MDrawRequest & request, M3dView & view ) const{
 
 
 //////////////////////////////////////////////////////////////////////////
-// MesherUI::select (override)
+// GrowerShapeUI::select (override)
 //
 // Description:
 //
@@ -235,7 +235,7 @@ void MesherUI::draw( const MDrawRequest & request, M3dView & view ) const{
 //     worldSpaceSelectPts  -
 //
 //////////////////////////////////////////////////////////////////////////
-bool MesherUI::select( MSelectInfo &/*selectInfo*/, MSelectionList &/*selectionList*/,
+bool GrowerShapeUI::select( MSelectInfo &/*selectInfo*/, MSelectionList &/*selectionList*/,
 						MPointArray &/*worldSpaceSelectPts*/ ) const {
 return true;
 }
@@ -247,7 +247,7 @@ return true;
 ///////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////
-// MesherUI::DrawWireframe
+// GrowerShapeUI::DrawWireframe
 //
 // Description:
 //
@@ -259,7 +259,7 @@ return true;
 //     view    - view to draw into
 //
 //////////////////////////////////////////////////////////////////////////
-void MesherUI::DrawWireframe( const MDrawRequest & request, M3dView & view ) const {
+void GrowerShapeUI::DrawWireframe( const MDrawRequest & request, M3dView & view ) const {
 	MDrawData data = request.drawData();
 	GrowerData * geom = (GrowerData*)data.geometry();
 
@@ -374,7 +374,7 @@ void MesherUI::DrawWireframe( const MDrawRequest & request, M3dView & view ) con
 
 
 //////////////////////////////////////////////////////////////////////////
-// MesherUI::SelectVertices
+// GrowerShapeUI::SelectVertices
 //
 // Description:
 //
@@ -387,7 +387,7 @@ void MesherUI::DrawWireframe( const MDrawRequest & request, M3dView & view ) con
 //     worldSpaceSelectPts  -
 //
 //////////////////////////////////////////////////////////////////////////
-bool MesherUI::SelectVertices( MSelectInfo &/*selectInfo*/,
+bool GrowerShapeUI::SelectVertices( MSelectInfo &/*selectInfo*/,
 							 MSelectionList &/*selectionList*/,
 							 MPointArray &/*worldSpaceSelectPts*/ ) const {
 	return false;

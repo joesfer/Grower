@@ -14,18 +14,18 @@
 
 /////////////////////////////////////////////////////////////////////
 //
-// class MesherUI
+// class GrowerShapeUI
 //
 //	Implements the part in charge of drawing the shape in the 
 //	viewports
 // 
 /////////////////////////////////////////////////////////////////////
 
-class MesherUI : public MPxSurfaceShapeUI
+class GrowerShapeUI : public MPxSurfaceShapeUI
 {
 public:
-	MesherUI();
-	virtual ~MesherUI(); 
+	GrowerShapeUI();
+	virtual ~GrowerShapeUI(); 
 
 	/////////////////////////////////////////////////////////////////////
 	//

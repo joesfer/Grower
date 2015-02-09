@@ -8,8 +8,8 @@
 #include "SamplerNode.h"
 #include "GrowerNode.h"
 #include "TrimmerNode.h"
-#include "MesherNode.h"
-#include "MesherUI.h"
+#include "GrowerShape.h"
+#include "GrowerShapeUI.h"
 #include "GrowerData.h"
 #include "SamplerCacheData.h"
 #include "SamplePreviewShape.h"
@@ -71,7 +71,7 @@ MStatus initializePlugin( MObject obj )
 								  GrowerShape::id, 
 								  GrowerShape::creator,
 								  GrowerShape::initialize, 
-								  MesherUI::creator );
+								  GrowerShapeUI::creator );
 	if (!status) {
 		status.perror("registerShape GrowerShape");
 		return status;
