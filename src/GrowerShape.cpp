@@ -67,7 +67,6 @@ MObject		GrowerShape::outMesh;
 //////////////////////////////////////////////////////////////////////////
 
 MObject GrowerShape::geometryData() const {
-	return MObject();
 	GrowerShape* nonConstThis = const_cast<GrowerShape*>(this);
 	MDataBlock datablock = nonConstThis->forceCache();
 	MDataHandle handle = datablock.inputValue( outMesh );
@@ -553,3 +552,4 @@ MStatus GrowerShape::initialize()
 	return MS::kSuccess;
 
 }
+

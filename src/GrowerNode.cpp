@@ -4,6 +4,7 @@
 	This software is released under the LGPL-3.0 license: http://www.opensource.org/licenses/lgpl-3.0.html	
 	================================================================================
 */
+
 #include "GrowerNode.h"
 #include "GrowerData.h"
 #include "NearestNeighbors.h"
@@ -43,10 +44,12 @@
 	return MS::kFailure;    \
 	}
 
+
 #define MCHECKERRORNORET(STAT,MSG)  \
 	if ( MS::kSuccess != STAT ) {   \
 	cerr << MSG << endl;        \
 	}
+
 
 // You MUST change this to a unique value!!!  The typeId is a 32bit value used
 // to identify this type of node in the binary file format.  
